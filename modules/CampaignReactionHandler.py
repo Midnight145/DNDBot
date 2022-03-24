@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import discord
 from discord.ext import commands
 
-from modules import Strings
+#from modules import Strings
 
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
     from ..bot import DNDBot
@@ -52,7 +52,7 @@ class CampaignReactionHandler(commands.Cog):
 
         embed = discord.Embed(
             title="Verification Denied",
-            description=Strings.verification_denied(self.bot.config['verification_channel']),
+            description=verification_denied(self.bot.config['verification_channel']),
             color=discord.Color.dark_red(),
             timestamp=datetime.datetime.utcnow()
         )
