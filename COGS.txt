@@ -1,0 +1,11 @@
+modules.utilities
+modules.errorhandler
+modules.listeners
+modules.CampaignManager
+modules.CampaignPlayerManager
+modules.CampaignReactionHandler
+modules.CampaignBuilder
+modules.warnings
+modules.remind
+logs.member
+logs.text

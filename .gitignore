@@ -1,0 +1,5 @@
+*.db
+__pycache__/
+token.txt
+config.json
+.idea/
