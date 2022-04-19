@@ -6,6 +6,7 @@ import discord
 from discord.ext import commands
 
 #from modules import Strings
+from .CampaignBuilder import verification_denied
 
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
     from ..bot import DNDBot
@@ -39,6 +40,7 @@ class CampaignReactionHandler(commands.Cog):
                 await self.deny_player(message, payload.member)
 
     async def verify(self, member: discord.Member) -> bool:
+        return
         """
         :param member: Member to be verified
         :return: Whether verification was successful or not
@@ -46,8 +48,8 @@ class CampaignReactionHandler(commands.Cog):
         pattern = re.compile(self.bot.config["verified_regex"])
         match = pattern.fullmatch(member.display_name)
         if match:
-            await member.add_roles(self.bot.config["verified_role"])
-            await member.remove_roles(self.bot.config["guest_role"])
+            await member.add_roles(member.guild.get_role(self.bot.config["verified_role"]))
+            await member.remove_roles(member.guild.get_role(self.bot.config["guest_role"]))
             return True
 
         embed = discord.Embed(
