@@ -33,7 +33,7 @@ class ErrorHandler(commands.Cog):
     @commands.command(aliases=["show_error"])
     async def get_error(self, context: commands.Context, errcode: str):
         try:
-            await context.send(str(self.bot.traceback[int(errcode)]))
+            await context.send("```\n" + str(self.bot.traceback[int(errcode)]) + "\n```")
         except KeyError:
             await context.send("Error code does not exist, returning.")
 
