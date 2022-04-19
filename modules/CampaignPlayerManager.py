@@ -20,15 +20,25 @@ class CampaignPlayerManager(commands.Cog):
         guest_role = context.guild.get_role(self.bot.config["guest_role"])
         member_role = context.guild.get_role(self.bot.config["member_role"])
         campaign_role = context.guild.get_role(campaign.role)
-        await member.remove_roles(guest_role)
-        await member.add_roles(member_role, campaign_role)
-        self.bot.CampaignSQLHelper.add_player(campaign, member)
 
-        if campaign.current_players + 1 == campaign.min_players:
-            category: discord.CategoryChannel = context.guild.get_channel(campaign.category)
-            for i in category.channels:
-                if i.name == "lobby":
-                    await i.send("This campaign now meets its minimum player goal!")
+        if campaign.current_players >= campaign.max_players:
+            await context.send(f"Couldn't add player to {campaign.name}: This campaign is full.")
+            return
+
+        commit = self.bot.CampaignSQLHelper.add_player(campaign, member)
+        if commit:
+            await member.remove_roles(guest_role)
+            await member.add_roles(member_role, campaign_role)
+
+            if campaign.current_players + 1 == campaign.min_players:
+                category: discord.CategoryChannel = context.guild.get_channel(campaign.category)
+                for i in category.channels:
+                    if i.name == "lobby":
+                        await i.send("This campaign now meets its minimum player goal!")
+            await context.send(f"{member.mention} has been added to the campaign!")
+            self.bot.connection.commit()
+        else:
+            await context.send("An unknown error occurred.")
 
     @commands.command()
     async def remove_player(self, context: commands.Context, member: discord.Member, campaign_id: Union[int, str]):
@@ -37,18 +47,22 @@ class CampaignPlayerManager(commands.Cog):
         member_role = context.guild.get_role(self.bot.config["member_role"])
         campaign_role = context.guild.get_role(campaign.role)
 
-        await member.remove_roles(campaign_role)
-        campaign_roles = self.bot.CampaignSQLHelper.select_field("role")
-        guest = True
-        for i in campaign_roles:
-            if i in member.roles:
-                guest = False
+        commit = self.bot.CampaignSQLHelper.remove_player(campaign, member)
+        if commit:
+            await member.remove_roles(campaign_role)
+            campaign_roles = self.bot.CampaignSQLHelper.select_field("role")
+            guest = True
+            for i in campaign_roles:
+                if i in member.roles:
+                    guest = False
 
-        if guest:
-            await member.remove_roles(member_role)
-            await member.add_roles(guest_role)
-
-        self.bot.CampaignSQLHelper.remove_player(campaign, member)
+            if guest:
+                await member.remove_roles(member_role)
+                await member.add_roles(guest_role)
+            await context.send(f"{member.mention} has been removed from the campaign!")
+            self.bot.connection.commit()
+        else:
+            await context.send("An unknown error occurred.")
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -64,7 +78,7 @@ class CampaignPlayerManager(commands.Cog):
         campaigns = []
         campaign_name = ""
         name = found_embed.fields[0].value + " " + found_embed.fields[1].value
-        member = message.guild.get_member_named(found_embed.fielsd[2].value)
+        member = message.guild.get_member_named(found_embed.fields[2].value)
         for i in found_embed.fields[9::]:
             campaign_name = i.value
             if "(waitlist)" in i.value:
