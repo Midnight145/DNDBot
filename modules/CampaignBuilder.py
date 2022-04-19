@@ -31,7 +31,7 @@ class CampaignBuilder(commands.Cog):
         # create campaign role
         role = await guild.create_role(reason="new campaign", name=name, mentionable=True)
         # add campaign role to CampaignInfo object
-        retval.role = role
+        retval.role = role.id
         # fetch dm role
         dm_role = guild.get_role(self.bot.config["dm_role"])
 
@@ -44,13 +44,13 @@ class CampaignBuilder(commands.Cog):
 
         # create campaign category and add to CampaignInfo
         category = await guild.create_category(name, overwrites=overwrites)
-        retval.category = category
+        retval.category = category.id
 
         # Fetch "Information" category
         info_category = guild.get_channel(self.bot.config["info_category"])
         # Create campaign's information channel and add to CampaignInfo
         global_channel = await info_category.create_text_channel(name=name)
-        retval.information_channel = global_channel
+        retval.information_channel = global_channel.id
 
         # Create campaign announcement channel
         announcements = await category.create_text_channel(name="announcements")
@@ -76,43 +76,46 @@ class CampaignBuilder(commands.Cog):
 
         return retval
 
-    async def delete_campaign(self, info: dict) -> bool:
-        # fetch campaign's category
-        category = self.bot.get_channel(info["category"])
+    async def delete_campaign(self, info: CampaignInfo) -> bool:
+        try:
+            # fetch campaign's category
+            category = self.bot.get_channel(info.category)
+            # fetch global campaign information channel
+            global_channel = self.bot.get_channel(info.information_channel)
+            # move channel to archive category
+            await global_channel.move(category=category.guild.get_channel(self.bot.config["archive_category"]), reason="campaign deleted", end=True, sync_permissions=True)
 
-        # fetch global campaign information channel
-        global_channel = self.bot.get_channel(info["global_channel"])
-        # move channel to archive category
-        global_channel.move(category=self.bot.config["archive_category"])
+            # delete channels
+            for channel in category.channels:
+                await channel.delete()
+            await category.delete()
 
-        # delete channels
-        for channel in category.channels:
-            await channel.delete()
-        await category.delete()
+            resp = self.bot.CampaignSQLHelper.select_field("role")
+            campaign_role = category.guild.get_role(info.role)
 
-        resp = self.bot.CampaignSQLHelper.select_field("role")
-        campaign_role = category.guild.get_role(info["role"])
+            for member in campaign_role.members:
+                member: discord.Member
+                found = False
+                for role_ in resp:
+                    role = category.guild.get_role(role_)
+                    if member in role.members:
+                        # member is in another campaign, stop
+                        found = True
+                        break
 
-        for member in campaign_role.members:
-            member: discord.Member
-            found = False
-            for role_ in resp:
-                role = self.bot.get_role(role_)
-                if member in role.members:
-                    # member is in another campaign, stop
-                    found = True
-                    break
+                # if member not in any other campaigns
+                if not found:
+                    # remove member, add guest
+                    await member.remove_roles(self.bot.config["member_role"])
+                    await member.add_roles(self.bot.config["guest_role"])
 
-            # if member not in any other campaigns
-            if not found:
-                # remove member, add guest
-                await member.remove_roles(self.bot.config["member_role"])
-                await member.add_roles(self.bot.config["guest_role"])
+            # delete role
+            await (category.guild.get_role(info.role)).delete()
 
-        # delete role
-        await (category.guild.get_role(info["role"])).delete()
-
-        return True
+            return True
+        except Exception as e:
+            print(e)
+            return False
 
 
 def setup(bot):
