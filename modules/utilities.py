@@ -40,11 +40,14 @@ class Utilities(commands.Cog):
                       aliases=['ul'])
     @commands.is_owner()
     async def unload(self, context, arg):
-        arg = arg.lower()
+        if arg not in self.bot.all_cogs:
+            arg = "modules." + arg
         if arg not in self.bot.all_cogs:
             await context.send(f"Error: cog {arg} doesn't exist. Check spelling or capitalization.")
+            return
         if arg in self.bot.unloaded_cogs:
             await context.send(f"Cog {arg} already unloaded! Try loading it first.")
+            return
         self.bot.unload_extension(arg)
         await context.send(f"Cog {arg} successfully unloaded!")
         self.bot.loaded_cogs.remove(arg)
@@ -54,11 +57,14 @@ class Utilities(commands.Cog):
                       aliases=['l'])
     @commands.is_owner()
     async def load(self, context, arg):
-        arg = arg.lower()
+        if arg not in self.bot.all_cogs:
+            arg = "modules." + arg
         if arg not in self.bot.all_cogs:
             await context.send(f"Error: cog {arg} doesn't exist. Check spelling or capitalization.")
+            return
         if arg in self.bot.loaded_cogs:
             await context.send(f"Cog {arg} already loaded! Try unloading it first.")
+            return
         self.bot.load_extension(arg)
         await context.send(f"Cog {arg} successfully loaded!")
         self.bot.unloaded_cogs.remove(arg)
@@ -68,9 +74,11 @@ class Utilities(commands.Cog):
                       aliases=['rl'])
     @commands.is_owner()
     async def reload(self, context, arg):
-        arg = arg.lower()
+        if arg not in self.bot.all_cogs:
+            arg = "modules." + arg
         if arg not in self.bot.all_cogs:
             await context.send(f"Error: cog {arg} doesn't exist. Check spelling or capitalization.")
+            return
         if arg in self.bot.unloaded_cogs:
             await context.send(f"Cog {arg} is unloaded, loading instead.")
             self.bot.load_extension(arg)
@@ -149,7 +157,6 @@ class Utilities(commands.Cog):
     @commands.command(aliases=['ac'])
     @commands.is_owner()
     async def add_cog(self, context: commands.Context, arg):
-        arg = arg.lower()
         if arg not in self.bot.all_cogs:
             self.bot.all_cogs.append(arg)
             with open(self.bot.COG_FILE, "a") as cogs:
