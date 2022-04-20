@@ -8,12 +8,14 @@ import json
 class Utilities(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.bot.config_file = '../config.json'
+        self.bot.config_file = 'config.json'
 
         def update_config():
             data = json.JSONEncoder().encode(self.bot.config)
             obj = json.loads(data)
             with open(self.bot.config_file, 'w') as conf:
+                print("Writing config to file...")
+                print(json.dumps(obj, ensure_ascii=True, indent=2))
                 conf.write(json.dumps(obj, ensure_ascii=True, indent=2))
 
         self.bot.update_config = update_config
@@ -116,7 +118,7 @@ class Utilities(commands.Cog):
     @commands.is_owner()
     @commands.command(aliases=['rlconf', 'rlcon', 'rlconfig', 'reloadconfig'])
     async def reload_config(self, context):
-        with open('../config.json') as config_file:
+        with open('config.json') as config_file:
             config = json.load(config_file)
             self.bot.config = config
             await context.send("Config reloaded!")
