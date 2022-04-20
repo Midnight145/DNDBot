@@ -13,32 +13,48 @@ if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting with
 class CampaignPlayerManager(commands.Cog):
     def __init__(self, bot: 'DNDBot'):
         self.bot = bot
+        self.bot.CampaignPlayerManager = self
 
-    @commands.command()
-    async def add_player(self, context: commands.Context, member: discord.Member, campaign_id: Union[int, str]):
-        campaign: CampaignInfo = self.bot.CampaignSQLHelper.select_campaign(campaign_id)
-        guest_role = context.guild.get_role(self.bot.config["guest_role"])
-        member_role = context.guild.get_role(self.bot.config["member_role"])
-        campaign_role = context.guild.get_role(campaign.role)
+    @commands.command(aliases=["add_player"])
+    async def add_player_command(self, context: commands.Context, member: discord.Member, campaign_id: Union[int, str]):
+        await self.add_player(context.channel, member, campaign_id)
 
-        if campaign.current_players >= campaign.max_players:
-            await context.send(f"Couldn't add player to {campaign.name}: This campaign is full.")
-            return
+    async def add_player(self, channel: discord.TextChannel, member: discord.Member, campaign_id: Union[int, str], waitlisted=False) -> bool:
+        campaign_id: CampaignInfo = self.bot.CampaignSQLHelper.select_campaign(campaign_id)
+        guest_role = channel.guild.get_role(self.bot.config["guest_role"])
+        member_role = channel.guild.get_role(self.bot.config["member_role"])
+        campaign_role = channel.guild.get_role(campaign_id.role)
 
-        commit = self.bot.CampaignSQLHelper.add_player(campaign, member)
+        if campaign_id.current_players >= campaign_id.max_players:
+            self.bot.CampaignSQLHelper.waitlist_player(campaign_id, member)
+            await channel.send(f"{member.display_name} has been added to the waitlist.")
+            return True
+        if waitlisted:
+            commit = self.bot.CampaignSQLHelper.unwaitlist(campaign_id, member)
+        else:
+            commit = self.bot.CampaignSQLHelper.add_player(campaign_id, member)
         if commit:
+            try:
+                await member.send(f"{member.display_name}: This is a notification that you have been approved and added to a "
+                              f"campaign. If you ever wish to leave the campaign, please use the Leave a Campaign "
+                              f"form found in #how-to-join. Campaign: {campaign_id.name}.")
+            except (discord.Forbidden, discord.HTTPException):
+                pass
+
             await member.remove_roles(guest_role)
             await member.add_roles(member_role, campaign_role)
 
-            if campaign.current_players + 1 == campaign.min_players:
-                category: discord.CategoryChannel = context.guild.get_channel(campaign.category)
+            if campaign_id.current_players + 1 == campaign_id.min_players:
+                category: discord.CategoryChannel = channel.guild.get_channel(campaign_id.category)
                 for i in category.channels:
                     if i.name == "lobby":
                         await i.send("This campaign now meets its minimum player goal!")
-            await context.send(f"{member.mention} has been added to the campaign!")
+            await channel.send(f"{member.mention} has been added to the campaign!")
             self.bot.connection.commit()
+            return True
         else:
-            await context.send("An unknown error occurred.")
+            await channel.send("An unknown error occurred.")
+            return False
 
     @commands.command()
     async def remove_player(self, context: commands.Context, member: discord.Member, campaign_id: Union[int, str]):
@@ -61,6 +77,10 @@ class CampaignPlayerManager(commands.Cog):
                 await member.add_roles(guest_role)
             await context.send(f"{member.mention} has been removed from the campaign!")
             self.bot.connection.commit()
+            if campaign.current_players - 1 < campaign.max_players:
+                waitlisted_players = self.bot.CampaignSQLHelper.get_waitlist(campaign)
+                if len(waitlisted_players) > 0:
+                    await self.bot.CampaignPlayerManager.add_player(context.channel, context.guild.get_member(waitlisted_players[0]["id"]), campaign.name, True)
         else:
             await context.send("An unknown error occurred.")
 
@@ -69,7 +89,7 @@ class CampaignPlayerManager(commands.Cog):
         await self.apply(message)
 
     async def apply(self, message):
-        if not message.channel.id == 887340491333591100:
+        if not message.channel.id == self.bot.config["receipt_channel"]:
             return
         if not message.embeds: return
         found_embed = message.embeds[0]
@@ -79,7 +99,9 @@ class CampaignPlayerManager(commands.Cog):
         campaign_name = ""
         name = found_embed.fields[0].value + " " + found_embed.fields[1].value
         member = message.guild.get_member_named(found_embed.fields[2].value)
-        for i in found_embed.fields[9::]:
+        channel = message.guild.get_channel(self.bot.config["applications_channel"])
+        for i in found_embed.fields[10::]:
+            print(i.value)
             campaign_name = i.value
             if "(waitlist)" in i.value:
                 campaign_name = i.value[:-11]
@@ -97,9 +119,10 @@ class CampaignPlayerManager(commands.Cog):
             embed.add_field(name="Discord", value=str(member))
             embed.set_footer(text="React with a green checkmark to approve or a red X to deny.")
 
-            await message.channel.send(dm.mention, embed=embed)
+            to_react = await channel.send(dm.mention, embed=embed)
 
-        await message.add_reaction("✅")
+            await to_react.add_reaction("✅")
+            await to_react.add_reaction("❌")
 
 
 def setup(bot):
