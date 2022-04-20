@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 import sqlite3
-from modules import CampaignBuilder, CampaignSQLHelper
+from modules import CampaignBuilder, CampaignSQLHelper, CampaignPlayerManager
 
 
 class DNDBot(commands.Bot):
@@ -19,3 +19,4 @@ class DNDBot(commands.Bot):
 
         self.CampaignBuilder = CampaignBuilder(self)
         self.CampaignSQLHelper = CampaignSQLHelper(self)
+        self.CampaignPlayerManager: CampaignPlayerManager = None
