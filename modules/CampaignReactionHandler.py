@@ -25,6 +25,7 @@ class CampaignReactionHandler(commands.Cog):
         channel: discord.TextChannel = self.bot.get_channel(payload.channel_id)  # queuing bot for text channel
         message: discord.Message = await channel.fetch_message(payload.message_id)  # fetching message from text channel
 
+
         if channel.id == self.bot.config["verification_channel"]:
             success = await self.verify(payload.member)
             if not success:
@@ -33,10 +34,13 @@ class CampaignReactionHandler(commands.Cog):
             return
 
         if channel.id == self.bot.config["applications_channel"]:
-            if payload.emoji == "✅":
+            if message.author.id != self.bot.user.id:  # if message author is not the bot
+                return
+            if payload.emoji.name == "✅":
+                print("hello")
                 await self.approve_player(message, payload.member)
 
-            elif payload.emoji == "❌":
+            elif payload.emoji.name == "❌":
                 await self.deny_player(message, payload.member)
 
     async def verify(self, member: discord.Member) -> bool:
@@ -81,11 +85,18 @@ class CampaignReactionHandler(commands.Cog):
             return
 
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
-        self.bot.CampaignSQLHelper.add_player(campaign, player)
         if campaign.current_players >= campaign.max_players:
+            self.bot.CampaignSQLHelper.waitlist_player(campaign_name, member)
             await message.add_reaction("⏸️")
+
         else:
-            await message.add_reaction("☑️")
+            if await self.bot.CampaignPlayerManager.add_player(message.channel, member, campaign_name):
+                await message.add_reaction("☑️")
+            else:
+                await message.channel.send("An unknown error occured.")
+                return
+        await message.clear_reaction("✅")
+        await message.clear_reaction("❌")
 
     async def deny_player(self, message: discord.Message, member: discord.Member) -> None:
         """
@@ -107,7 +118,9 @@ class CampaignReactionHandler(commands.Cog):
 
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
         await player.send(f"You have been denied from {campaign_name}. This is an automated message. If you believe this to be a mistake, please contact the Campaign Master.")
-        await message.add_reaction(":regional_indicator_x:")
+        await message.add_reaction("🇽")
+        await message.clear_reaction("✅")
+        await message.clear_reaction("❌")
 
 
 def setup(bot):
