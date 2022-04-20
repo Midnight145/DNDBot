@@ -1,4 +1,5 @@
 import sqlite3
+import string
 from typing import Union, Optional, TYPE_CHECKING
 
 import discord
@@ -67,7 +68,7 @@ class CampaignSQLHelper:
         if isinstance(campaign, int):
             return self.dict_to_campaign(self.bot.db.execute(f"SELECT * FROM campaigns WHERE id = {campaign}").fetchone())
         else:
-            return self.dict_to_campaign(self.bot.db.execute(f"SELECT * FROM campaigns WHERE name LIKE {campaign}").fetchone())
+            return self.dict_to_campaign(self.bot.db.execute(f"SELECT * FROM campaigns WHERE name LIKE ?", (campaign,)).fetchone())
 
     def select_field(self, field) -> Optional[list[dict]]:
         """
@@ -93,10 +94,28 @@ class CampaignSQLHelper:
 
     def add_player(self, campaign: CampaignInfo, player: discord.Member):
         try:
-            waitlisted = 1 if campaign.current_players >= campaign.max_players else 0
+            waitlisted = 0
             self.bot.db.execute(f"INSERT INTO {self.__get_table_name(campaign.name)} (id, waitlisted, name) VALUES (?, ?, ?)", (player.id, waitlisted, player.display_name))
             if not waitlisted:
                 self.__increment_players(campaign, 1)
+            return True
+        except Exception as e:
+            print(e)
+            return False
+
+    def waitlist_player(self, campaign: CampaignInfo, player: discord.Member):
+        try:
+            waitlisted = 1
+            self.bot.db.execute(f"INSERT INTO {self.__get_table_name(campaign.name)} (id, waitlisted, name) VALUES (?, ?, ?)", (player.id, waitlisted, player.display_name))
+            return True
+        except Exception as e:
+            print(e)
+            return False
+
+    def unwaitlist(self, campaign: CampaignInfo, player: discord.Member):
+        try:
+            waitlisted = 0
+            self.bot.db.execute(f"UPDATE {self.__get_table_name(campaign.name)} SET waitlisted = ? WHERE id = ?", (waitlisted, player.id))
             return True
         except Exception as e:
             print(e)
@@ -121,5 +140,12 @@ class CampaignSQLHelper:
             print(e)
             return False
 
+    def get_waitlist(self, campaign: CampaignInfo):
+        try:
+            return self.bot.db.execute(f"SELECT * FROM {self.__get_table_name(campaign.name)} WHERE waitlisted = 1").fetchall()
+        except Exception as e:
+            print(e)
+            return None
+
     def __get_table_name(self, campaign_name: str) -> str:
-        return campaign_name.replace(" ", "_") + "_players"
+        return ''.join([i for i in campaign_name.replace(" ", "_") if i in string.ascii_letters or i == "_"]) + "_players"
