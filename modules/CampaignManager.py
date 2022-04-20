@@ -38,7 +38,7 @@ class CampaignManager(commands.Cog):
         campaign_info.max_players = int(max_players)
         campaign_info.current_players = int(current_players)
 
-        commit = self.CampaignSQLHelper.create_campaign(campaign_info, campaign_info.current_players)
+        commit = self.CampaignSQLHelper.create_campaign(campaign_info)
         if commit:
             embed = discord.Embed(
                 title="Campaign Registered",
