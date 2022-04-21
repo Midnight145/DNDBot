@@ -25,7 +25,6 @@ class CampaignReactionHandler(commands.Cog):
         channel: discord.TextChannel = self.bot.get_channel(payload.channel_id)  # queuing bot for text channel
         message: discord.Message = await channel.fetch_message(payload.message_id)  # fetching message from text channel
 
-
         if channel.id == self.bot.config["verification_channel"]:
             success = await self.verify(payload.member)
             if not success:
@@ -44,7 +43,6 @@ class CampaignReactionHandler(commands.Cog):
                 await self.deny_player(message, payload.member)
 
     async def verify(self, member: discord.Member) -> bool:
-        return
         """
         :param member: Member to be verified
         :return: Whether verification was successful or not
@@ -53,7 +51,6 @@ class CampaignReactionHandler(commands.Cog):
         match = pattern.fullmatch(member.display_name)
         if match:
             await member.add_roles(member.guild.get_role(self.bot.config["verified_role"]))
-            await member.remove_roles(member.guild.get_role(self.bot.config["guest_role"]))
             return True
 
         embed = discord.Embed(
