@@ -21,6 +21,9 @@ class CampaignPlayerManager(commands.Cog):
 
     async def add_player(self, channel: discord.TextChannel, member: discord.Member, campaign_id: Union[int, str], waitlisted=False) -> bool:
         campaign_id: CampaignInfo = self.bot.CampaignSQLHelper.select_campaign(campaign_id)
+        if member.id == campaign_id.dm:
+            await channel.send("You cannot join your own campaign.")
+            return False
         guest_role = channel.guild.get_role(self.bot.config["guest_role"])
         member_role = channel.guild.get_role(self.bot.config["member_role"])
         campaign_role = channel.guild.get_role(campaign_id.role)
@@ -98,9 +101,9 @@ class CampaignPlayerManager(commands.Cog):
         campaigns = []
         campaign_name = ""
         name = found_embed.fields[0].value + " " + found_embed.fields[1].value
-        member = message.guild.get_member_named(found_embed.fields[2].value)
+        member = message.guild.get_member(int(found_embed.fields[2].value))
         channel = message.guild.get_channel(self.bot.config["applications_channel"])
-        for i in found_embed.fields[10::]:
+        for i in found_embed.fields[11::]:
             print(i.value)
             campaign_name = i.value
             if "(waitlist)" in i.value:
@@ -123,6 +126,18 @@ class CampaignPlayerManager(commands.Cog):
 
             await to_react.add_reaction("✅")
             await to_react.add_reaction("❌")
+
+    @commands.command()
+    async def update_campaign_players(self, context: commands.Context, campaign_id: Union[int, str]):
+        campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_id)
+        campaign_role = context.guild.get_role(campaign.role)
+
+        members = campaign_role.members
+
+        for i in members:
+            await self.bot.CampaignPlayerManager.add_player(context.channel, i, campaign_id)
+
+        await context.send("Campaign players updated.")
 
 
 def setup(bot):

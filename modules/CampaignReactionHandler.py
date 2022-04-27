@@ -36,7 +36,6 @@ class CampaignReactionHandler(commands.Cog):
             if message.author.id != self.bot.user.id:  # if message author is not the bot
                 return
             if payload.emoji.name == "✅":
-                print("hello")
                 await self.approve_player(message, payload.member)
 
             elif payload.emoji.name == "❌":
@@ -75,7 +74,7 @@ class CampaignReactionHandler(commands.Cog):
         player_name = message_embed.fields[2].value
         player_discord = message_embed.fields[3].value
 
-        player = message.guild.get_member_named(player_discord)
+        player = message.guild.get_member(int(player_discord))
         dm = message.guild.get_member_named(dm)
 
         if member.id != dm.id:
