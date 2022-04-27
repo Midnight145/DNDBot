@@ -211,6 +211,12 @@ class Utilities(commands.Cog):
             await context.send(f"Error in sending message to {member.mention}: Forbidden")
 
 
+    @commands.command()
+    async def id(self, context: commands.Context, member: discord.Member=None):
+        if member is None:
+            member = context.author
+        await context.send(str(member.id))
+
 
 def setup(bot):
     bot.add_cog(Utilities(bot))
