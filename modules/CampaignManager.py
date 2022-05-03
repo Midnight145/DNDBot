@@ -80,7 +80,7 @@ class CampaignManager(commands.Cog):
         :return: None
         """
 
-        campaign_info = await self.CampaignBuilder.create_campaign(context, name)
+        campaign_info = await self.CampaignBuilder.create_campaign(context, name, dungeon_master)
         campaign_info.name = name
         campaign_info.dm = dungeon_master.id
         campaign_info.min_players = int(min_players)

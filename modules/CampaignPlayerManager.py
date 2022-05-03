@@ -89,12 +89,14 @@ class CampaignPlayerManager(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
+
         await self.apply(message)
 
     async def apply(self, message):
         if not message.channel.id == self.bot.config["receipt_channel"]:
             return
-        if not message.embeds: return
+        if not message.embeds:
+            return
         found_embed = message.embeds[0]
         if found_embed is None or found_embed == discord.Embed.Empty:
             return
@@ -103,8 +105,9 @@ class CampaignPlayerManager(commands.Cog):
         name = found_embed.fields[0].value + " " + found_embed.fields[1].value
         member = message.guild.get_member(int(found_embed.fields[2].value))
         channel = message.guild.get_channel(self.bot.config["applications_channel"])
-        for i in found_embed.fields[11::]:
-            print(i.value)
+        for i in found_embed.fields[10::]:
+            if "which of the following" not in i.name.lower():
+                continue
             campaign_name = i.value
             if "(waitlist)" in i.value:
                 campaign_name = i.value[:-11]
@@ -120,6 +123,7 @@ class CampaignPlayerManager(commands.Cog):
             embed.add_field(name="DM", value=str(dm), inline=False)
             embed.add_field(name="Name", value=name)
             embed.add_field(name="Discord", value=str(member))
+            embed.add_field(name="Discord ID", value=str(member.id))
             embed.set_footer(text="React with a green checkmark to approve or a red X to deny.")
 
             to_react = await channel.send(dm.mention, embed=embed)

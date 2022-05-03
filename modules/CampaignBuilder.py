@@ -17,11 +17,12 @@ class CampaignBuilder(commands.Cog):
     def __init__(self, bot: 'DNDBot'):
         self.bot = bot
 
-    async def create_campaign(self, context: commands.Context, name: str) -> CampaignInfo:
+    async def create_campaign(self, context: commands.Context, name: str, dm: discord.Member) -> CampaignInfo:
         """
         Creates all of the necessary channels when creating a new campaign
         :param context: Command context
         :param name: Campaign name
+        :param dm: Campaign dm
         :return: CampaignInfo object
         """
 
@@ -32,14 +33,12 @@ class CampaignBuilder(commands.Cog):
         role = await guild.create_role(reason="new campaign", name=name, mentionable=True)
         # add campaign role to CampaignInfo object
         retval.role = role.id
-        # fetch dm role
-        dm_role = guild.get_role(self.bot.config["dm_role"])
 
         # handle permission overwrites
         overwrites = {guild.default_role: discord.PermissionOverwrite(read_messages=False),
                       role: discord.PermissionOverwrite(send_messages=True, read_messages=True),
-                      dm_role: discord.PermissionOverwrite(manage_channels=True, manage_permissions=True,
-                                                           send_messages=True)
+                      dm: discord.PermissionOverwrite(manage_channels=True, manage_permissions=True,
+                                                      send_messages=True)
                       }
 
         # create campaign category and add to CampaignInfo
@@ -83,7 +82,8 @@ class CampaignBuilder(commands.Cog):
             # fetch global campaign information channel
             global_channel = self.bot.get_channel(info.information_channel)
             # move channel to archive category
-            await global_channel.move(category=category.guild.get_channel(self.bot.config["archive_category"]), reason="campaign deleted", end=True, sync_permissions=True)
+            await global_channel.move(category=category.guild.get_channel(self.bot.config["archive_category"]),
+                                      reason="campaign deleted", end=True, sync_permissions=True)
 
             # delete channels
             for channel in category.channels:

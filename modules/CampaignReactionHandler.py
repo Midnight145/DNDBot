@@ -33,13 +33,18 @@ class CampaignReactionHandler(commands.Cog):
             return
 
         if channel.id == self.bot.config["applications_channel"]:
+            if not message.embeds:
+                return
+            embed = message.embeds[0]
+            discord_id = int(embed.fields[4].value)
+            member = message.guild.get_member(discord_id)
             if message.author.id != self.bot.user.id:  # if message author is not the bot
                 return
             if payload.emoji.name == "✅":
-                await self.approve_player(message, payload.member)
+                await self.approve_player(message, member, payload.member)
 
             elif payload.emoji.name == "❌":
-                await self.deny_player(message, payload.member)
+                await self.deny_player(message, member, payload.member)
 
     async def verify(self, member: discord.Member) -> bool:
         """
@@ -62,22 +67,24 @@ class CampaignReactionHandler(commands.Cog):
 
         return False
 
-    async def approve_player(self, message: discord.Message, member: discord.Member):
+    async def approve_player(self, message: discord.Message, member: discord.Member, reactor: discord.Member):
         """
         :param message: Message retrieved from reaction payload
         :param member: Member to approve
+        :param reactor: Member who reacted, probably the DM
         :return: None
         """
         message_embed = message.embeds[0]
         campaign_name = message_embed.fields[0].value
         dm = message_embed.fields[1].value
         player_name = message_embed.fields[2].value
-        player_discord = message_embed.fields[3].value
+        discord_tag = message_embed.fields[3].value
+        player_discord = message_embed.fields[4].value
 
         player = message.guild.get_member(int(player_discord))
         dm = message.guild.get_member_named(dm)
 
-        if member.id != dm.id:
+        if reactor.id != dm.id:
             return
 
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
@@ -94,22 +101,23 @@ class CampaignReactionHandler(commands.Cog):
         await message.clear_reaction("✅")
         await message.clear_reaction("❌")
 
-    async def deny_player(self, message: discord.Message, member: discord.Member) -> None:
+    async def deny_player(self, message: discord.Message, member: discord.Member, reactor: discord.Member) -> None:
         """
         :param message: Message retrieved from reaction payload
         :param member: Member to deny
+        :param reactor: Member who reacted, probably the DM
         :return: None
         """
         message_embed = message.embeds[0]
         campaign_name = message_embed.fields[0].value
         dm = message_embed.fields[1].value
         player_name = message_embed.fields[2].value
-        player_discord = message_embed.fields[3].value
+        player_discord = message_embed.fields[4].value
 
-        player = message.guild.get_member_named(player_discord)
+        player = message.guild.get_member(player_discord)
         dm = message.guild.get_member_named(dm)
 
-        if member.id != dm.id:
+        if reactor.id != dm.id:
             return
 
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
