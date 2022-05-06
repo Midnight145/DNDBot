@@ -32,6 +32,20 @@ class Text(commands.Cog):
         file.close()
         os.remove(filename)
 
+    @commands.Cog.listener()
+    async def on_message_delete(self, message: discord.Message):
+        if message.guild.id != 809567701407629363 or message.author.bot:
+            return
+
+        embed = discord.Embed(
+            description=f'Message {message.id} deleted from {message.channel.mention}\
+                    \n**Content:** {message.content}',
+            color=discord.Color.from_rgb(255, 0, 0),
+            timestamp=datetime.datetime.utcnow())
+        embed.set_author(name=f"{str(message.author)} ({message.author.id})", icon_url=message.author.avatar_url)
+        channel = message.guild.get_channel(self.channel)
+        files = [(await i.to_file()) for i in message.attachments]
+        await channel.send(embed=embed, files=files)
 
 def setup(bot):
     bot.add_cog(Text(bot))
