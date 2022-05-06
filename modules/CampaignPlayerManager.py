@@ -116,10 +116,10 @@ class CampaignPlayerManager(commands.Cog):
         for i in campaigns:
             dm = message.guild.get_member(i.dm)
             embed = discord.Embed(
-                title=f"New Application for {campaign_name}",
+                title=f"New Application for {i.name}",
                 timestamp=datetime.datetime.utcnow()
             )
-            embed.add_field(name="Campaign", value=campaign_name, inline=False)
+            embed.add_field(name="Campaign", value=i.name, inline=False)
             embed.add_field(name="DM", value=str(dm), inline=False)
             embed.add_field(name="Name", value=name)
             embed.add_field(name="Discord", value=str(member))
