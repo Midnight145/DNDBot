@@ -1,4 +1,5 @@
 import datetime
+import os
 
 from discord.ext import commands
 import discord
@@ -210,12 +211,39 @@ class Utilities(commands.Cog):
         except discord.Forbidden:
             await context.send(f"Error in sending message to {member.mention}: Forbidden")
 
-
     @commands.command()
     async def id(self, context: commands.Context, member: discord.Member=None):
         if member is None:
             member = context.author
         await context.send(str(member.id))
+
+    @commands.command()
+    async def log(self, context: commands.Context, member: discord.Member):
+        await context.send("Going...")
+        guild: discord.Guild = context.guild
+        for channel in guild.channels:
+            await context.send("Logging in channel: " + channel.mention)
+            strs = []
+            if not isinstance(channel, discord.TextChannel):
+                continue
+            channel: discord.TextChannel
+            filename = f"{member.id}-{channel.name}.txt"
+            if os.path.exists(filename):
+                continue
+            async for message in channel.history(limit=None, oldest_first=True):
+                if message.author.id == member.id:
+                    str_ = f"{message.created_at} {str(message.author)}: {message.content}\n"
+                    strs.append(str_)
+                    for i in message.attachments:
+                        str_ = f"{message.created_at} {str(message.author)}: {i.proxy_url}\n"
+                        strs.append(str_)
+            if len(strs) == 0:
+                continue
+            with open(filename, "w") as f:
+                f.writelines(strs)
+            file = discord.File(filename)
+            await context.send(f"Logged {member.mention} in {channel.mention}", file=file)
+            os.remove(filename)
 
 
 def setup(bot):
