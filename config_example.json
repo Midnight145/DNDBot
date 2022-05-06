@@ -1,0 +1,23 @@
+{
+  "prefix": "bot prefix",
+  "server": server_id
+  "status": "bot status",
+  "player_logs": player_log_channel_id,
+  "database_file": "database name",
+  "staff_botspam": staff_botspam_channel_id,
+  "dm_role": dm_role_id,
+  "member_role": member_role_id,
+  "guest_role": guest_role_id,
+  "warnings_channel": warnings_channel_id,
+  "officer_role": officer_role_id,
+  "member_log": member_log_channel_id,
+  "verified_regex": "^([A-Z][a-z]*)+(([']?|[ ]?|[-]?)[A-z])*[ ][A-Z]([-][A-Z])?$",
+  "verified_role": verified_role_id,
+  "verification_channel": verification_channel_id,
+  "applications_channel": applications_channel_id,
+  "info_category": info_category_id,
+  "archive_category": archive_category_id,
+  "text_log": text_log_channel_id,
+  "log_channel": log_channel_id,
+  "receipt_channel": receipt_channel_id,
+}
