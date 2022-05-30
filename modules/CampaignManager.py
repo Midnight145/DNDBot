@@ -101,6 +101,7 @@ class CampaignManager(commands.Cog):
             await context.send(embed=embed)
 
             self.bot.connection.commit()
+            await self.bot.CampaignPlayerManager.update_status(campaign_info)
         else:
             await context.send("Something went wrong.")
 
@@ -115,12 +116,15 @@ class CampaignManager(commands.Cog):
 
         resp = self.CampaignSQLHelper.select_campaign(campaign)
         commit = self.CampaignSQLHelper.delete_campaign(campaign)
-        commit2 = await self.CampaignBuilder.delete_campaign(resp)
-        if commit and commit2:
+
+        if commit:
             await context.send(f"Campaign \"{resp.name}\" deleted.")
             self.bot.connection.commit()
         else:
             await context.send(f"There was an error deleting \"{resp.name}\"")
+            return
+
+        commit2 = await self.CampaignBuilder.delete_campaign(resp)
 
     @commands.command()
     @commands.has_any_role("Officer", "Dungeon Master")
