@@ -5,6 +5,7 @@ from typing import Union, Optional, TYPE_CHECKING
 import discord
 
 from .CampaignInfo import CampaignInfo
+import traceback
 
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
     from ..bot import DNDBot
@@ -34,7 +35,7 @@ class CampaignSQLHelper:
                 (vals.name, vals.dm, vals.role, vals.category, vals.information_channel, vals.min_players, vals.max_players, vals.current_players))
             return True
         except Exception as e:
-            print(e)
+            traceback.print_exc()
             return False
 
     def delete_campaign(self, campaign: Union[int, str]) -> bool:
@@ -55,7 +56,7 @@ class CampaignSQLHelper:
                 self.bot.db.execute(f"DROP TABLE {self.__get_table_name(campaign)}")
             return True
         except Exception as e:
-            print(e)
+            traceback.print_exc()
             return False
 
     def select_campaign(self, campaign: Union[int, str]) -> CampaignInfo:
@@ -69,6 +70,7 @@ class CampaignSQLHelper:
             return self.dict_to_campaign(self.bot.db.execute(f"SELECT * FROM campaigns WHERE id = {campaign}").fetchone())
         else:
             return self.dict_to_campaign(self.bot.db.execute(f"SELECT * FROM campaigns WHERE name LIKE ?", (campaign,)).fetchone())
+
 
     def select_field(self, field) -> Optional[list[dict]]:
         """
@@ -100,7 +102,7 @@ class CampaignSQLHelper:
                 self.__increment_players(campaign, 1)
             return True
         except Exception as e:
-            print(e)
+            traceback.print_exc()
             return False
 
     def waitlist_player(self, campaign: CampaignInfo, player: discord.Member):
@@ -109,7 +111,7 @@ class CampaignSQLHelper:
             self.bot.db.execute(f"INSERT INTO {self.__get_table_name(campaign.name)} (id, waitlisted, name) VALUES (?, ?, ?)", (player.id, waitlisted, player.display_name))
             return True
         except Exception as e:
-            print(e)
+            traceback.print_exc()
             return False
 
     def unwaitlist(self, campaign: CampaignInfo, player: discord.Member):
@@ -118,7 +120,7 @@ class CampaignSQLHelper:
             self.bot.db.execute(f"UPDATE {self.__get_table_name(campaign.name)} SET waitlisted = ? WHERE id = ?", (waitlisted, player.id))
             return True
         except Exception as e:
-            print(e)
+            traceback.print_exc()
             return False
 
     def remove_player(self, campaign: CampaignInfo, player: discord.Member):
@@ -128,7 +130,7 @@ class CampaignSQLHelper:
             self.bot.connection.commit()
             return True
         except Exception as e:
-            print(e)
+            traceback.print_exc()
             return False
 
     def __increment_players(self, campaign: CampaignInfo, amount):
@@ -137,15 +139,23 @@ class CampaignSQLHelper:
             self.bot.connection.commit()
             return True
         except Exception as e:
-            print(e)
+            traceback.print_exc()
             return False
 
     def get_waitlist(self, campaign: CampaignInfo):
         try:
             return self.bot.db.execute(f"SELECT * FROM {self.__get_table_name(campaign.name)} WHERE waitlisted = 1").fetchall()
         except Exception as e:
-            print(e)
+            traceback.print_exc()
             return None
 
     def __get_table_name(self, campaign_name: str) -> str:
         return ''.join([i for i in campaign_name.replace(" ", "_") if i in string.ascii_letters or i == "_"]) + "_players"
+
+    def get_waitlisted_players(self, campaign: CampaignInfo):
+        try:
+            return self.bot.db.execute(f"SELECT * FROM {self.__get_table_name(campaign.name)} WHERE waitlisted = 1").fetchall()
+        except Exception as e:
+            traceback.print_exc()
+            return None
+
