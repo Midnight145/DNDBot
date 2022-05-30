@@ -1,3 +1,5 @@
+import importlib
+
 import discord
 from discord.ext import commands
 import sqlite3
@@ -20,3 +22,18 @@ class DNDBot(commands.Bot):
         self.CampaignBuilder = CampaignBuilder(self)
         self.CampaignSQLHelper = CampaignSQLHelper(self)
         self.CampaignPlayerManager: CampaignPlayerManager = None
+
+    @commands.command(name="reload", aliases=["r"], hidden=True)
+    async def reload(self, ctx: commands.Context):
+        """Reloads all cogs"""
+        for cog in self.all_cogs:
+            try:
+                self.unload_extension(cog)
+                self.load_extension(cog)
+                self.loaded_cogs.append(cog)
+                self.unloaded_cogs.remove(cog)
+            except Exception as e:
+                self.traceback[cog] = e
+                self.unloaded_cogs.append(cog)
+                self.loaded_cogs.remove(cog)
+        await ctx.send("Reloaded all cogs")
