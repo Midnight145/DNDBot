@@ -89,9 +89,12 @@ class CampaignReactionHandler(commands.Cog):
 
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
         if campaign.current_players >= campaign.max_players:
-            self.bot.CampaignSQLHelper.waitlist_player(campaign_name, member)
-            await message.add_reaction("⏸️")
-
+            commit = self.bot.CampaignSQLHelper.waitlist_player(campaign, member)
+            if commit:
+                await message.add_reaction("⏸️")
+                self.bot.connection.commit()
+            else:
+                await message.channel.send("An unknown error occured while adding the player to the waitlist.")
         else:
             if await self.bot.CampaignPlayerManager.add_player(message.channel, member, campaign_name):
                 await message.add_reaction("☑️")
@@ -100,6 +103,7 @@ class CampaignReactionHandler(commands.Cog):
                 return
         await message.clear_reaction("✅")
         await message.clear_reaction("❌")
+        await self.bot.CampaignPlayerManager.update_status(campaign)
 
     async def deny_player(self, message: discord.Message, member: discord.Member, reactor: discord.Member) -> None:
         """
@@ -112,7 +116,7 @@ class CampaignReactionHandler(commands.Cog):
         campaign_name = message_embed.fields[0].value
         dm = message_embed.fields[1].value
         player_name = message_embed.fields[2].value
-        player_discord = message_embed.fields[4].value
+        player_discord = int(message_embed.fields[4].value)
 
         player = message.guild.get_member(player_discord)
         dm = message.guild.get_member_named(dm)
