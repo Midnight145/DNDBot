@@ -107,14 +107,16 @@ class CampaignManager(commands.Cog):
 
     @commands.command()
     @commands.has_any_role("Officer", "Dungeon Master")
-    async def delete_campaign(self, context: commands.Context, campaign: Union[int, str]):
+    async def delete_campaign(self, context: commands.Context, campaign: Union[int, str], *, reason):
         """
         :param context: Command context
-        :param campaign: Either campaign name or campaign ID
+        :param campaign: Either campaign name (wrapped in quotes) or campaign ID
+        :param reason: The reason the campaign was deleted, DM'd to the members of the campaign.
         :return: None
         """
 
         resp = self.CampaignSQLHelper.select_campaign(campaign)
+
         commit = self.CampaignSQLHelper.delete_campaign(campaign)
 
         if commit:
@@ -123,8 +125,12 @@ class CampaignManager(commands.Cog):
         else:
             await context.send(f"There was an error deleting \"{resp.name}\"")
             return
-
+        members = self.CampaignSQLHelper.get_players(resp)
         commit2 = await self.CampaignBuilder.delete_campaign(resp)
+
+        for member in members:
+            member = context.guild.get_member(member)
+            await member.send(f'You have been removed from a campaign due to it being ended by its DM or the President. Campaign: {resp.name}. Reason: {reason}.')
 
     @commands.command()
     @commands.has_any_role("Officer", "Dungeon Master")
@@ -153,6 +159,22 @@ class CampaignManager(commands.Cog):
                                f"{row['current_players']}/{row['max_players']}\n"
 
         await context.send(message_content)
+
+    @commands.command()
+    async def list_players(self, context: commands.Context, campaign: Union[int, str]):
+        campaign = self.CampaignSQLHelper.select_campaign(campaign)
+        players = self.CampaignSQLHelper.get_players(campaign)
+        members = []
+        message = ""
+        if players is None:
+            await context.send("An error occurred.")
+            return
+        for i in players:
+            if (member := context.guild.get_member(i["id"])) is not None:
+                message += f"{member.display_name} ({member.id})\n"
+            else:
+                message += f"Could not resolve user {i['id']} -- Perhaps they left?\n"
+        await context.send(message)
 
 
 def setup(bot):
