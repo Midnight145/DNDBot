@@ -1,8 +1,9 @@
+import datetime
+import re
 import time
 
-from discord.ext import commands
 import discord
-import datetime
+from discord.ext import commands
 
 
 class Remind(commands.Cog):
@@ -11,23 +12,25 @@ class Remind(commands.Cog):
 
     @commands.command()
     async def remind(self, context, _time, *, phrase):
-        temp = int(''.join([i for i in _time if i.isdigit()]))
+        pattern = r'(\d+\w)'
+        matches = re.findall(pattern, _time)
         seconds = 0  # Make Pycharm stop complaining
-        for i in str(_time):
-            if i == "d":
-                seconds = temp * 86400  # Converts days into seconds
-            elif i == "h":
-                seconds = temp * 3600
-            elif i == "m":
-                seconds = temp * 60
+        for match in matches:
+            temp = int(match[:-1])
+            unit = match[-1]
+            if unit == "d":
+                seconds += temp * 86400  # Converts days into seconds
+            elif unit == "h":
+                seconds += temp * 3600
+            elif unit == "m":
+                seconds += temp * 60
             else:
-                seconds = temp
-
+                seconds += temp
         old_time = time.time()
         new_time = datetime.datetime.utcfromtimestamp(old_time + seconds)
         await context.send("Reminder " + phrase + " created for " + _time + "!")
         await discord.utils.sleep_until(new_time)
-        await context.send(context.author.mention + ": " + phrase)
+        await context.send(f"{context.author.mention}: {phrase}\nMessage: {context.message.jump_url}")
 
 
 def setup(bot):
