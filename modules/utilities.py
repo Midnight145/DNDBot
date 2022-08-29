@@ -76,7 +76,7 @@ class Utilities(commands.Cog):
     @commands.command(help=f"Will reload a cog.\nUsage: {BOT_PREFIX}reload cogname", brief="Will reload a cog.",
                       aliases=['rl'])
     @commands.is_owner()
-    async def reload(self, context, arg):
+    async def reload_cog(self, context, arg):
         if arg not in self.bot.all_cogs:
             arg = "modules." + arg
         if arg not in self.bot.all_cogs:
@@ -93,7 +93,7 @@ class Utilities(commands.Cog):
         await context.send(f"Cog {arg} successfully reloaded!")
 
     @commands.command(name="reload", aliases=["r"], hidden=True)
-    async def reload(self, ctx: commands.Context):
+    async def reload_all(self, ctx: commands.Context):
         """Reloads all cogs"""
         for cog in self.bot.all_cogs:
             try:
