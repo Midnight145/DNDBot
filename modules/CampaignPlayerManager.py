@@ -5,6 +5,7 @@ import discord
 from discord.ext import commands
 import importlib
 from modules import CampaignInfo
+from .FakeMember import FakeMember
 
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
     from ..bot import DNDBot
@@ -30,7 +31,7 @@ class CampaignPlayerManager(commands.Cog):
 
         if campaign.current_players >= campaign.max_players:
             self.bot.CampaignSQLHelper.waitlist_player(campaign, member)
-            await channel.send(f"{member.display_name} has been added to the waitlist.")
+            await channel.send(f"{member.display_name} has been added to the waitlist for {campaign.name}.")
             await self.update_status(campaign)
             return True
         if waitlisted:
@@ -53,7 +54,7 @@ class CampaignPlayerManager(commands.Cog):
                 for i in category.channels:
                     if i.name == "lobby":
                         await i.send("This campaign now meets its minimum player goal!")
-            await channel.send(f"{member.mention} has been added to the campaign!")
+            await channel.send(f"{member.mention} has been added to the campaign {campaign.name}!")
             self.bot.connection.commit()
             await self.update_status(campaign)
             return True
@@ -62,7 +63,7 @@ class CampaignPlayerManager(commands.Cog):
             return False
 
     @commands.command()
-    async def remove_player(self, context: commands.Context, member: discord.Member, campaign_id: Union[int, str]):
+    async def remove_player(self, context: commands.Context, member: Union[discord.Member, FakeMember], campaign_id: Union[int, str]):
         campaign: CampaignInfo = self.bot.CampaignSQLHelper.select_campaign(campaign_id)
         guest_role = context.guild.get_role(self.bot.config["guest_role"])
         member_role = context.guild.get_role(self.bot.config["member_role"])
@@ -90,6 +91,10 @@ class CampaignPlayerManager(commands.Cog):
             await context.send("An unknown error occurred.")
         await self.update_status(campaign)
 
+    @commands.command()
+    async def remove_missing_player(self, context, member: int, campaign_id: Union[int, str]):
+        await self.remove_player(context, FakeMember(member), campaign_id)
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
 
@@ -106,7 +111,7 @@ class CampaignPlayerManager(commands.Cog):
         campaigns = []
         campaign_name = ""
         name = found_embed.fields[0].value + " " + found_embed.fields[1].value
-        member = message.guild.get_member(int(found_embed.fields[2].value))
+        member = await message.guild.fetch_member(int(found_embed.fields[2].value))
         channel = message.guild.get_channel(self.bot.config["applications_channel"])
         for i in found_embed.fields[10::]:
             if "which of the following" not in i.name.lower():
@@ -117,7 +122,7 @@ class CampaignPlayerManager(commands.Cog):
             campaigns.append(self.bot.CampaignSQLHelper.select_campaign(campaign_name))
 
         for i in campaigns:
-            dm = message.guild.get_member(i.dm)
+            dm = await message.guild.fetch_member(i.dm)
             embed = discord.Embed(
                 title=f"New Application for {i.name}",
                 timestamp=datetime.datetime.utcnow()
@@ -162,15 +167,22 @@ class CampaignPlayerManager(commands.Cog):
         await context.send(embed=embed)
 
     async def update_status(self, campaign: CampaignInfo):
+        campaign = self.bot.CampaignSQLHelper.select_campaign(campaign.name)
         info_channel: discord.TextChannel = self.bot.get_channel(campaign.information_channel)
+        messages = await info_channel.history(limit=1).flatten()
+        if len(messages) == 0:
+            await info_channel.send(
+                content=f"Status: {campaign.current_players} out of {campaign.max_players} seats filled.")
+            return
         last_message = (await info_channel.history(limit=1).flatten())[0]
         if last_message.author == self.bot.user:
-            await last_message.edit(content=f"Status: {campaign.current_players} out of {campaign.max_players} players.")
+            await last_message.edit(content=f"Status: {campaign.current_players} out of {campaign.max_players} seats filled.")
         else:
-            await info_channel.send(content=f"Status: {campaign.current_players} out of {campaign.max_players} players.")
+            await info_channel.send(content=f"Status: {campaign.current_players} out of {campaign.max_players} seats filled.")
 
     @commands.command()
     async def update_campaign_status(self, context: commands.Context, campaign: Union[int, str]):
+
         await self.bot.CampaignPlayerManager.update_status(self.bot.CampaignSQLHelper.select_campaign(campaign))
         await context.send("status updated")
 
