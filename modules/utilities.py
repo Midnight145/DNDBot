@@ -92,6 +92,23 @@ class Utilities(commands.Cog):
         self.bot.reload_extension(arg)
         await context.send(f"Cog {arg} successfully reloaded!")
 
+    @commands.command(name="reload", aliases=["r"], hidden=True)
+    async def reload(self, ctx: commands.Context):
+        """Reloads all cogs"""
+        for cog in self.bot.all_cogs:
+            try:
+                self.bot.unload_extension(cog)
+                self.bot.load_extension(cog)
+                self.bot.loaded_cogs.append(cog)
+                self.bot.unloaded_cogs.remove(cog)
+            except Exception as e:
+                self.bot.traceback[cog] = e
+                self.bot.unloaded_cogs.append(cog)
+                self.bot.loaded_cogs.remove(cog)
+        await ctx.send("Reloaded all cogs")
+
+
+
     @commands.command()
     @commands.is_owner()
     async def rename(self, context, *, name):
