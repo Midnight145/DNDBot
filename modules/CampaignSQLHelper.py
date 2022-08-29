@@ -6,6 +6,7 @@ import discord
 
 from .CampaignInfo import CampaignInfo
 import traceback
+from .FakeMember import FakeMember
 
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
     from ..bot import DNDBot
@@ -123,11 +124,10 @@ class CampaignSQLHelper:
             traceback.print_exc()
             return False
 
-    def remove_player(self, campaign: CampaignInfo, player: discord.Member):
+    def remove_player(self, campaign: CampaignInfo, player: Union[discord.Member, FakeMember]):
         try:
             self.bot.db.execute(f"DELETE FROM {self.__get_table_name(campaign.name)} WHERE id = {player.id}")
             self.__increment_players(campaign, -1)
-            self.bot.connection.commit()
             return True
         except Exception as e:
             traceback.print_exc()
@@ -159,3 +159,9 @@ class CampaignSQLHelper:
             traceback.print_exc()
             return None
 
+    def get_players(self, campaign: CampaignInfo):
+        try:
+            return self.bot.db.execute(f"SELECT id FROM {self.__get_table_name(campaign.name)} WHERE waitlisted = 0").fetchall()
+        except Exception as e:
+            traceback.print_exc()
+            return None
