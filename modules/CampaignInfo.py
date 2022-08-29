@@ -8,7 +8,6 @@ class CampaignInfo:
         """
         Holds the information about a given campaign, normally created by CampaignSQLHelper from a row. Can be
         initialized to None and filled manually, or can be filled via constructor.
-        # TODO: this is currently used as integers once, but objects elsewhere. STANDARDIZE THIS
         :param name: The campaign's name
         :param role: The campaign's role
         :param category: The campaign's category channel
