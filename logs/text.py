@@ -15,14 +15,16 @@ class Text(commands.Cog):
         message_channel = message_list[0].channel
         filename = message_channel.name + "_on_" + datetime.datetime.utcnow().strftime("%a_%b_%d_at_%H_%M_%S") + ".txt"
         headers = ["discord tag", "user id", "content", "timestamp"]
-        data = [[i.author.name + "#" + i.author.discriminator, i.author.id, i.content, i.created_at.strftime("%a_%b_%d_at_%H_%M_%S")] for i in message_list]
+        data = [[i.author.name + "#" + i.author.discriminator, i.author.id, i.content, i.created_at.strftime(
+            "%a_%b_%d_at_%H_%M_%S")] for i in message_list]
         table = columnar(data, headers, no_borders=True, terminal_width=200)
         with open(filename, 'w+') as file:
             file.write(table)
 
         embed = discord.Embed(
             title='Messages Bulk Deleted',
-            description=f'Messages bulk deleted from {message_channel.mention}. Deleted messages are available in the attached file.',
+            description=f'Messages bulk deleted from {message_channel.mention}. Deleted messages are available in the '
+                        f'attached file.',
             color=discord.Color.from_rgb(241, 196, 14),
             timestamp=datetime.datetime.utcnow()
         )
@@ -46,6 +48,7 @@ class Text(commands.Cog):
         channel = message.guild.get_channel(self.channel)
         files = [(await i.to_file()) for i in message.attachments]
         await channel.send(embed=embed, files=files)
+
 
 def setup(bot):
     bot.add_cog(Text(bot))

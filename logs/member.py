@@ -1,7 +1,6 @@
 from discord.ext import commands
 import discord
 import datetime
-import asyncio
 import io
 
 nl = "\n"
@@ -35,10 +34,12 @@ class Member(commands.Cog):
         async for entry in member.guild.audit_logs(limit=1, action=discord.AuditLogAction.kick):
             if entry.target == member:
                 embed = discord.Embed(
-                    description=f'**Kicked {member.name}**{member.discriminator} *(ID: {member.id})*\n\n**Reason**: {entry.reason if entry.reason is not None else "None"}',
+                    description=f'**Kicked {member.name}**{member.discriminator} *(ID: {member.id})*\n\n**Reason**: '
+                                f'{entry.reason if entry.reason is not None else "None"}',
                     color=discord.Color.from_rgb(242, 160, 19),
                     timestamp=datetime.datetime.utcnow())
-                embed.set_author(name=f'{entry.user} ({entry.user.id})', icon_url=entry.user.avatar_url_as(format='png'))
+                embed.set_author(name=f'{entry.user} ({entry.user.id})',
+                                 icon_url=entry.user.avatar_url_as(format='png'))
                 embed.set_thumbnail(url=member.avatar_url_as(format='png'))
                 channel = self.bot.get_channel(self.log_channel)
                 await channel.send(embed=embed)
@@ -51,7 +52,8 @@ class Member(commands.Cog):
             timestamp=datetime.datetime.utcnow(),
             color=discord.Color.from_rgb(5, 110, 247)
         )
-        embed.add_field(name="Roles", value=f'{(" ".join([i.mention for i in member.roles][1::])) if len(member.roles[1::]) > 0 else "None"}')
+        embed.add_field(name="Roles",
+                        value=f'{(" ".join([i.mention for i in member.roles][1::])) if len(member.roles[1::]) > 0 else "None"}')
         embed.set_footer(text=f'There are now {member.guild.member_count} members')
         embed.set_image(url=member.avatar_url_as(format='png'))
 
@@ -70,7 +72,8 @@ class Member(commands.Cog):
                     by = True
                     audit = entry
             embed = discord.Embed(
-                description=f'**Nickname Change**\n`{before.nick}` → `{after.nick}`\n{"Changed by " + str(audit.user) if by else ""}',
+                description=f'**Nickname Change**\n`{before.nick}` → '
+                            f'`{after.nick}`\n{"Changed by " + str(audit.user) if by else ""}',
                 color=discord.Color.from_rgb(255, 140, 0),
                 timestamp=datetime.datetime.utcnow()
             )
@@ -100,13 +103,16 @@ class Member(commands.Cog):
                 color=discord.Color.from_rgb(241, 196, 15))
             embed.add_field(name="ID", value=str(before.id))
             if len(before.roles) != 0:
-                embed.add_field(name="Old Roles", value=(" ".join([i.mention for i in before.roles][1::])) if len(before.roles[1::]) > 0 else "None", inline=False)
+                embed.add_field(name="Old Roles", value=(" ".join([i.mention for i in before.roles][1::])) if len(
+                    before.roles[1::]) > 0 else "None", inline=False)
             if len(new_roles) != 0:
                 embed.add_field(name="Roles Added", value=" ".join([i.mention for i in new_roles]), inline=False)
             if len(removed_roles) != 0:
                 embed.add_field(name="Roles Removed", value=" ".join([i.mention for i in removed_roles]), inline=False)
             embed.set_author(name=before, icon_url=before.avatar_url_as(format='png'))
-            embed.add_field(name="Change made by:", value=f'{str(before) if reason == False else str(audit.user) + (" because " + audit.reason if audit.reason is not None else "")}', inline=False)
+            embed.add_field(name="Change made by:",
+                            value=f'{str(before) if reason == False else str(audit.user) + (" because " + audit.reason if audit.reason is not None else "")}',
+                            inline=False)
 
             if not len(embed) >= 2000:
                 await channel.send(embed=embed)

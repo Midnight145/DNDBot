@@ -1,3 +1,6 @@
+from types import TracebackType
+from typing import Union, Optional
+
 from discord.ext import commands
 import traceback
 from discord.ext.buttons import Paginator
@@ -6,13 +9,13 @@ import discord
 
 
 class TracebackHandler:
-    def __init__(self, _id: int, _error: str, _tb: traceback.TracebackException):
+    def __init__(self, _id: int, _error: str, _tb: Union[traceback.TracebackException, Optional[TracebackType]]):
         self.id = _id
         self.error = _error
         self.traceback = _tb
 
     def __str__(self):
-        return "**" + self.error + "**" + "\n" + ''.join(traceback.format_tb(self.traceback)).replace("ryan", "midnight")
+        return f'**{self.error}**\n{"".join(traceback.format_tb(self.traceback)).replace("ryan", "midnight")}'
 
 
 class ErrorHandler(commands.Cog):
@@ -26,6 +29,7 @@ class ErrorHandler(commands.Cog):
         f.seek(0)
         await context.send(file=discord.File(f, filename=f"error_{errcode}.txt"))
 
+    # noinspection PyUnusedLocal
     @commands.command()
     async def print_error(self, context: commands.Context, errcode: str):
         print(self.bot.traceback[int(errcode)])

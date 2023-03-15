@@ -21,12 +21,11 @@ connection = sqlite3.connect(config["database_file"])
 connection.row_factory = sqlite3.Row
 db = connection.cursor()
 db.execute("CREATE TABLE IF NOT EXISTS campaigns (id INTEGER PRIMARY KEY, name TEXT, dm INTEGER, role INTEGER, "
-           "category INTEGER, information_channel INTEGER, min_players INTEGER, max_players INTEGER, current_players INTEGER)")
+           "category INTEGER, information_channel INTEGER, min_players INTEGER, max_players INTEGER, current_players INTEGER, status_message INTEGER)")
 db.execute("CREATE TABLE IF NOT EXISTS warns (id INTEGER PRIMARY KEY, member INTEGER, reason TEXT)")
 connection.commit()
 
-intents = discord.Intents.default()
-intents.members = True
+intents = discord.Intents.all()
 
 bot = DNDBot(db, connection, config, command_prefix=get_prefix, intents=intents)
 

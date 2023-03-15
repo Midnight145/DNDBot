@@ -8,9 +8,19 @@ class Listeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
-        if member.guild.get_role(809567701735440467) in member.roles:
+        campaigns = []
+            # get all campaign roles
+        resp = self.bot.CampaignSQLHelper.select_field("role")
+        for role_ in resp:
+            # check if member is in campaign
+            role = member.guild.get_role(role_[0])
+            if role is None:
+                continue
+            if member in role.members:
+                campaigns.append(role.name)
+        if len(campaigns) > 0:
             await (member.guild.get_channel(self.bot.config["player_logs"])).send(
-                f"Member {member.mention} ({member.display_name}) left the server while in a campaign.\nNickname: {member.nick if member.nick is not None else member.display_name}\nUser ID: {member.id}")
+                f"Member {member.mention} ({member.display_name}) left the server while in a campaign.\nNickname: {member.nick if member.nick is not None else member.display_name}\nUser ID: {member.id}\nCampaigns: {', '.join(campaigns)}")
 
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
@@ -34,6 +44,10 @@ class Listeners(commands.Cog):
                     if channel.name == "lobby":
                         await channel.send(f"{after.mention} has joined the campaign!")
 
-
+#    @commands.Cog.listener()
+#    async def on_message(self, message):
+#        if "bee" in message.content.lower() and not message.author.bot and message.channel.id == 809567702062333967:
+#            await message.channel.send("bees are insects AND animals")
+ 
 def setup(bot):
     bot.add_cog(Listeners(bot))

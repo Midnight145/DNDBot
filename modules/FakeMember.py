@@ -1,11 +1,11 @@
 class FakeMember:
-    def __init__(self, id):
-        self.id = id
+    def __init__(self, fake_id):
+        self.id = fake_id
         self.roles = []
-        self.mention = str(id) + " FakeMember"
+        self.mention = str(fake_id) + " FakeMember"
 
-    async def remove_roles(self, role):
+    async def remove_roles(self, *roles):
         return
 
-    async def add_roles(self, role):
+    async def add_roles(self, *roles):
         return

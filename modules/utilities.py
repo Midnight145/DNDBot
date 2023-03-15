@@ -107,8 +107,6 @@ class Utilities(commands.Cog):
                 self.bot.loaded_cogs.remove(cog)
         await ctx.send("Reloaded all cogs")
 
-
-
     @commands.command()
     @commands.is_owner()
     async def rename(self, context, *, name):
@@ -134,7 +132,7 @@ class Utilities(commands.Cog):
         await context.send(embed=embed)
 
     @commands.is_owner()
-    @commands.command(aliases=['rlconf', 'rlcon', 'rlconfig', 'reloadconfig'])
+    @commands.command(aliases=['rlconfig'])
     async def reload_config(self, context):
         with open('config.json') as config_file:
             config = json.load(config_file)
@@ -229,7 +227,7 @@ class Utilities(commands.Cog):
             await context.send(f"Error in sending message to {member.mention}: Forbidden")
 
     @commands.command()
-    async def id(self, context: commands.Context, member: discord.Member=None):
+    async def id(self, context: commands.Context, member: discord.Member = None):
         if member is None:
             member = context.author
         await context.send(str(member.id))

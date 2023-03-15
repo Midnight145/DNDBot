@@ -26,7 +26,7 @@ class Warnings(commands.Cog):
 
         await context.message.delete()
 
-    @commands.command()
+    @commands.command(aliases=["warnings"])
     async def warns(self, context: commands.Context, member: discord.Member = None):
         if member is None:
             member = context.author
@@ -54,10 +54,14 @@ class Warnings(commands.Cog):
         warned_members = [i["member"] for i in resp]
         for member_id in warned_members:
             member = context.guild.get_member(member_id)
+            if member is None:
+                mention = member_id
+            else:
+                mention = member.mention
             counter = 0
             embed = discord.Embed(
                 title="Warnings",
-                description=f"Warnings for member {member.mention}",
+                description=f"Warnings for member {mention}",
                 color=discord.Color.dark_red(),
                 timestamp=datetime.datetime.utcnow()
             )
@@ -72,7 +76,7 @@ class Warnings(commands.Cog):
     async def remove_warn(self, context: commands.Context, member: discord.Member, index: int):
         resp = self.bot.db.execute("SELECT * FROM warns WHERE member = ?", (member.id,)).fetchall()
         text = resp[index]["reason"]
-        resp = self.bot.db.execute("DELETE FROM warns WHERE reason LIKE ? AND member = ?", (text, member.id))
+        self.bot.db.execute("DELETE FROM warns WHERE reason LIKE ? AND member = ?", (text, member.id))
         self.bot.db.connection.commit()
         embed = discord.Embed(
             title="Warning removed.",

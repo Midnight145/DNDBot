@@ -9,3 +9,4 @@ modules.warnings
 modules.remind
 logs.member
 logs.text
+jishaku

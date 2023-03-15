@@ -17,17 +17,26 @@ class CampaignBuilder(commands.Cog):
     def __init__(self, bot: 'DNDBot'):
         self.bot = bot
 
-    async def create_campaign(self, context: commands.Context, name: str, dm: discord.Member) -> CampaignInfo:
+    async def create_campaign(self, context: commands.Context, name: str, dm: discord.Member,
+                              min_players: int, max_players: int) -> CampaignInfo:
         """
-        Creates all of the necessary channels when creating a new campaign
+        Creates all the necessary channels when creating a new campaign
         :param context: Command context
         :param name: Campaign name
         :param dm: Campaign dm
+        :param min_players: Minimum players
+        :param max_players: Maximum players
         :return: CampaignInfo object
         """
 
         # return value
         retval = CampaignInfo()
+        retval.min_players = min_players
+        retval.max_players = max_players
+        retval.name = name
+        retval.current_players = 0
+        retval.dm = dm.id
+
         guild = context.guild
         # create campaign role
         role = await guild.create_role(reason="new campaign", name=name, mentionable=True)
@@ -38,7 +47,7 @@ class CampaignBuilder(commands.Cog):
         overwrites = {guild.default_role: discord.PermissionOverwrite(read_messages=False),
                       role: discord.PermissionOverwrite(send_messages=True, read_messages=True),
                       dm: discord.PermissionOverwrite(manage_channels=True, manage_permissions=True,
-                                                      send_messages=True)
+                                                      send_messages=True, manage_messages=True)
                       }
 
         # create campaign category and add to CampaignInfo
@@ -60,7 +69,7 @@ class CampaignBuilder(commands.Cog):
         await info.send(INFO_MESSAGE)
 
         # Create campaign lobby channel
-        lobby = await category.create_text_channel(name="lobby")
+        await category.create_text_channel(name="lobby")
 
         # Create campaign notes channel
         notes = await category.create_text_channel(name="notes")
@@ -71,51 +80,89 @@ class CampaignBuilder(commands.Cog):
         await pics.send(PICS_MESSAGE)
 
         # Create campaign voice channel
-        voice = await category.create_voice_channel(name=name)
+        await category.create_voice_channel(name=name)
+
+        # Create campaign status message
+        status_message = await self.bot.get_channel(self.bot.config["status_channel"]).send(
+            embed=self.create_status_message(retval))
+        retval.status_message = status_message.id
 
         return retval
 
     async def delete_campaign(self, info: CampaignInfo) -> bool:
+
+        # fetch campaign's category
+        category = self.bot.get_channel(info.category)
+        # fetch global campaign information channel
+        global_channel = self.bot.get_channel(info.information_channel)
+        # move channel to archive category
         try:
-            # fetch campaign's category
-            category = self.bot.get_channel(info.category)
-            # fetch global campaign information channel
-            global_channel = self.bot.get_channel(info.information_channel)
-            # move channel to archive category
             await global_channel.move(category=category.guild.get_channel(self.bot.config["archive_category"]),
                                       reason="campaign deleted", end=True, sync_permissions=True)
+        except:
+            await global_channel.delete()
+        # delete channels
+        for channel in category.channels:
+            await channel.delete()
+        await category.delete()
 
-            # delete channels
-            for channel in category.channels:
-                await channel.delete()
-            await category.delete()
-
-            resp = self.bot.CampaignSQLHelper.select_field("role")
-            campaign_role = category.guild.get_role(info.role)
-
-            for member in campaign_role.members:
-                member: discord.Member
-                found = False
-                for role_ in resp:
-                    role = category.guild.get_role(role_)
-                    if member in role.members:
-                        # member is in another campaign, stop
-                        found = True
-                        break
-
-                # if member not in any other campaigns
-                if not found:
-                    # remove member, add guest
-                    await member.remove_roles(self.bot.config["member_role"])
-                    await member.add_roles(self.bot.config["guest_role"])
-
-            # delete role
-            await (category.guild.get_role(info.role)).delete()
-
-            return True
-        except Exception as e:
-            print(e)
+        channel = self.bot.get_channel(self.bot.config["staff_botspam"])
+        campaign_role = category.guild.get_role(info.role)
+        if campaign_role is None:
             return False
+
+        resp = self.bot.CampaignSQLHelper.select_field("role")
+        for member in campaign_role.members:
+            member: discord.Member
+
+            await member.remove_roles(campaign_role)
+            found = False
+            for role_ in resp:
+                role = category.guild.get_role(int(role_["role"]))
+                if role is None:
+                    await channel.send(str(role_[0]) + " couldn't resolve")
+                    continue
+                if member in role.members:
+                    # member is in another campaign, stop
+                    found = True
+                    break
+
+            # if member not in any other campaigns
+            if not found:
+                # remove member, add guest
+                await member.remove_roles(global_channel.guild.get_role(self.bot.config["member_role"]))
+                await member.add_roles(global_channel.guild.get_role(self.bot.config["guest_role"]))
+
+        # delete role
+        await campaign_role.delete()
+
+        return True
+
+    @commands.command()
+    async def get_roles(self, context: commands.Context):
+        message = ""
+        resp = self.bot.CampaignSQLHelper.select_field("role")
+        for role_ in resp:
+            role = context.guild.get_role(role_[0])
+            if role is None:
+                message += f"Failed to get role {role_[0]}\n"
+            else:
+                message += f"{role.id}: {role.name}\n"
+        await context.send(message)
+
+    def create_status_message(self, campaign: CampaignInfo) -> discord.Embed:
+        embed = discord.Embed(
+            title=f"{campaign.name} Campaign Status",
+            color=0x00ff00
+        )
+        embed.add_field(name="DM", value=self.bot.get_user(campaign.dm).mention, inline=False)
+        embed.add_field(name="Status: ", value="✅ Open" if campaign.current_players < campaign.max_players
+                        else "❌ Closed", inline=False)
+
+        embed.add_field(name="Channel: ", value=f"<#{campaign.information_channel}>", inline=False)
+        embed.add_field(name="Players: ", value=f"{campaign.current_players}/{campaign.max_players}", inline=False)
+
+        return embed
 
 
 def setup(bot):
