@@ -21,6 +21,8 @@ class CampaignReactionHandler(commands.Cog):
         :param payload: Payload from reaction add event
         :return: None
         """
+        if payload.user_id == self.bot.user.id:
+            return
         channel: discord.TextChannel = self.bot.get_channel(payload.channel_id)  # queuing bot for text channel
 
         if isinstance(channel, discord.VoiceChannel):
