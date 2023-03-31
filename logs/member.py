@@ -14,16 +14,16 @@ class Member(commands.Cog):
     @commands.Cog.listener()
     async def on_member_join(self, member):
 
-        days_ago = datetime.datetime.utcnow() - member.created_at
+        days_ago = discord.utils.utcnow() - member.created_at
         embed = discord.Embed(
             title="Join Notification",
             description=f'{member.mention} ({str(member)}) has joined the server!',
-            timestamp=datetime.datetime.utcnow(),
+            timestamp=discord.utils.utcnow(),
             color=discord.Color.from_rgb(5, 110, 247)
         )
         embed.add_field(name="Creation Date", value=f'{member.created_at.strftime("%a %b %d %H:%M:%S")}\n{days_ago.days} days ago', inline=False)
 
-        embed.set_image(url=member.avatar_url_as(format='png'))
+        embed.set_image(url=member.display_avatar.replace(format='png'))
         embed.set_footer(text=f'There are now {member.guild.member_count} members')
         channel = member.guild.get_channel(self.log_channel)
         await channel.send(embed=embed)
@@ -37,10 +37,10 @@ class Member(commands.Cog):
                     description=f'**Kicked {member.name}**{member.discriminator} *(ID: {member.id})*\n\n**Reason**: '
                                 f'{entry.reason if entry.reason is not None else "None"}',
                     color=discord.Color.from_rgb(242, 160, 19),
-                    timestamp=datetime.datetime.utcnow())
+                    timestamp=discord.utils.utcnow())
                 embed.set_author(name=f'{entry.user} ({entry.user.id})',
-                                 icon_url=entry.user.avatar_url_as(format='png'))
-                embed.set_thumbnail(url=member.avatar_url_as(format='png'))
+                                 icon_url=entry.user.display_avatar.replace(format='png'))
+                embed.set_thumbnail(url=member.display_avatar.replace(format='png'))
                 channel = self.bot.get_channel(self.log_channel)
                 await channel.send(embed=embed)
                 return
@@ -49,13 +49,13 @@ class Member(commands.Cog):
         embed = discord.Embed(
             title="Leave Notification",
             description=f'{member.mention} ({str(member)}) has left the server!',
-            timestamp=datetime.datetime.utcnow(),
+            timestamp=discord.utils.utcnow(),
             color=discord.Color.from_rgb(5, 110, 247)
         )
         embed.add_field(name="Roles",
                         value=f'{(" ".join([i.mention for i in member.roles][1::])) if len(member.roles[1::]) > 0 else "None"}')
         embed.set_footer(text=f'There are now {member.guild.member_count} members')
-        embed.set_image(url=member.avatar_url_as(format='png'))
+        embed.set_image(url=member.display_avatar.replace(format='png'))
 
         channel = self.bot.get_channel(self.log_channel)
         await channel.send(embed=embed)
@@ -75,9 +75,9 @@ class Member(commands.Cog):
                 description=f'**Nickname Change**\n`{before.nick}` → '
                             f'`{after.nick}`\n{"Changed by " + str(audit.user) if by else ""}',
                 color=discord.Color.from_rgb(255, 140, 0),
-                timestamp=datetime.datetime.utcnow()
+                timestamp=discord.utils.utcnow()
             )
-            embed.set_author(name=f"{str(after)} ({after.id})", icon_url=after.avatar_url_as(format='png'))
+            embed.set_author(name=f"{str(after)} ({after.id})", icon_url=after.display_avatar.replace(format='png'))
             await channel.send(embed=embed)
 
         # Role Logging
@@ -99,7 +99,7 @@ class Member(commands.Cog):
 
             embed = discord.Embed(
                 title="Member Role Change",
-                timestamp=datetime.datetime.utcnow(),
+                timestamp=discord.utils.utcnow(),
                 color=discord.Color.from_rgb(241, 196, 15))
             embed.add_field(name="ID", value=str(before.id))
             if len(before.roles) != 0:
@@ -109,7 +109,7 @@ class Member(commands.Cog):
                 embed.add_field(name="Roles Added", value=" ".join([i.mention for i in new_roles]), inline=False)
             if len(removed_roles) != 0:
                 embed.add_field(name="Roles Removed", value=" ".join([i.mention for i in removed_roles]), inline=False)
-            embed.set_author(name=before, icon_url=before.avatar_url_as(format='png'))
+            embed.set_author(name=before, icon_url=before.display_avatar.replace(format='png'))
             embed.add_field(name="Change made by:",
                             value=f'{str(before) if reason == False else str(audit.user) + (" because " + audit.reason if audit.reason is not None else "")}',
                             inline=False)
@@ -140,13 +140,13 @@ class Member(commands.Cog):
             reason = entry.reason
         embed = discord.Embed(
             title=f"⛔️ User Banned by {str(audit.user)}",
-            timestamp=datetime.datetime.utcnow(),
+            timestamp=discord.utils.utcnow(),
             color=discord.Color.from_rgb(255, 0, 0))
         embed.add_field(name="Username", value=str(user))
         embed.add_field(name="ID", value=str(user.id))
         embed.add_field(name="Reason", value=reason if reason is not None else "None")
-        embed.set_thumbnail(url=user.avatar_url_as(format='png'))
-        embed.set_author(name=str(audit.user), icon_url=audit.user.avatar_url_as(format='png'))
+        embed.set_thumbnail(url=user.display_avatar.replace(format='png'))
+        embed.set_author(name=str(audit.user), icon_url=audit.user.display_avatar.replace(format='png'))
         await channel.send(embed=embed)
 
     @commands.Cog.listener()
@@ -157,14 +157,14 @@ class Member(commands.Cog):
             audit = entry
         embed = discord.Embed(
             title=f"✅️ User Unbanned by {str(audit.user)}",
-            timestamp=datetime.datetime.utcnow(),
+            timestamp=discord.utils.utcnow(),
             color=discord.Color.from_rgb(98, 198, 95))
         embed.add_field(name="Username", value=str(user))
         embed.add_field(name="ID", value=str(user.id))
-        embed.set_thumbnail(url=user.avatar_url_as(format='png'))
-        embed.set_author(name=str(audit.user), icon_url=audit.user.avatar_url_as(format='png'))
+        embed.set_thumbnail(url=user.display_avatar.replace(format='png'))
+        embed.set_author(name=str(audit.user), icon_url=audit.user.display_avatar.replace(format='png'))
         await channel.send(embed=embed)
 
 
-def setup(bot):
-    bot.add_cog(Member(bot))
+async def setup(bot):
+    await bot.add_cog(Member(bot))

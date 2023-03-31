@@ -33,5 +33,5 @@ class Remind(commands.Cog):
         await context.send(f"{context.author.mention}: {phrase}\nMessage: {context.message.jump_url}")
 
 
-def setup(bot):
-    bot.add_cog(Remind(bot))
+async def setup(bot):
+    await bot.add_cog(Remind(bot))

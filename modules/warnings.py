@@ -90,5 +90,5 @@ class Warnings(commands.Cog):
         await context.message.delete()
 
 
-def setup(bot):
-    bot.add_cog(Warnings(bot))
+async def setup(bot):
+    await bot.add_cog(Warnings(bot))

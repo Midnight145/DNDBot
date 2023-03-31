@@ -51,7 +51,7 @@ class Utilities(commands.Cog):
         if arg in self.bot.unloaded_cogs:
             await context.send(f"Cog {arg} already unloaded! Try loading it first.")
             return
-        self.bot.unload_extension(arg)
+        await self.bot.unload_extension(arg)
         await context.send(f"Cog {arg} successfully unloaded!")
         self.bot.loaded_cogs.remove(arg)
         self.bot.unloaded_cogs.append(arg)
@@ -68,7 +68,7 @@ class Utilities(commands.Cog):
         if arg in self.bot.loaded_cogs:
             await context.send(f"Cog {arg} already loaded! Try unloading it first.")
             return
-        self.bot.load_extension(arg)
+        await self.bot.load_extension(arg)
         await context.send(f"Cog {arg} successfully loaded!")
         self.bot.unloaded_cogs.remove(arg)
         self.bot.loaded_cogs.append(arg)
@@ -84,12 +84,12 @@ class Utilities(commands.Cog):
             return
         if arg in self.bot.unloaded_cogs:
             await context.send(f"Cog {arg} is unloaded, loading instead.")
-            self.bot.load_extension(arg)
+            await self.bot.load_extension(arg)
             await context.send(f"Cog {arg} successfully loaded!")
             self.bot.unloaded_cogs.remove(arg)
             self.bot.loaded_cogs.append(arg)
             return
-        self.bot.reload_extension(arg)
+        await self.bot.reload_extension(arg)
         await context.send(f"Cog {arg} successfully reloaded!")
 
     @commands.command(name="reload", aliases=["r"], hidden=True)
@@ -97,8 +97,8 @@ class Utilities(commands.Cog):
         """Reloads all cogs"""
         for cog in self.bot.all_cogs:
             try:
-                self.bot.unload_extension(cog)
-                self.bot.load_extension(cog)
+                await self.bot.unload_extension(cog)
+                await self.bot.load_extension(cog)
                 self.bot.loaded_cogs.append(cog)
                 self.bot.unloaded_cogs.remove(cog)
             except Exception as e:
@@ -121,9 +121,9 @@ class Utilities(commands.Cog):
             description="",
             color=discord.Color.gold()
         )
-        embed.set_author(name="Created by " + str(creator), icon_url=creator.avatar_url)
-        embed.set_thumbnail(url=creator.avatar_url)
-        embed.set_image(url=self.bot.user.avatar_url)
+        embed.set_author(name="Created by " + str(creator), icon_url=creator.display_avatar.url)
+        embed.set_thumbnail(url=creator.display_avatar.url)
+        embed.set_image(url=self.bot.user.display_avatar.url)
         embed.add_field(name="User ID", value=self.bot.user.id, inline=False)
         embed.add_field(name="Join Date",
                         value=context.guild.get_member(self.bot.user.id).joined_at.strftime("%Y-%m-%d %H:%M.%S"),
@@ -261,5 +261,5 @@ class Utilities(commands.Cog):
             os.remove(filename)
 
 
-def setup(bot):
-    bot.add_cog(Utilities(bot))
+async def setup(bot):
+    await bot.add_cog(Utilities(bot))

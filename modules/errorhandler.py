@@ -86,6 +86,10 @@ class ErrorHandler(commands.Cog):
 
         await Paginator(title="Tracebacks", color=0xce2029, entries=pages, length=1).start(context)
 
+    @commands.command()
+    async def throw(self, context: commands.Context):
+        raise Exception("This is a test exception.")
 
-def setup(bot):
-    bot.add_cog(ErrorHandler(bot))
+
+async def setup(bot):
+    await bot.add_cog(ErrorHandler(bot))

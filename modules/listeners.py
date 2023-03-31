@@ -9,7 +9,7 @@ class Listeners(commands.Cog):
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
         campaigns = []
-            # get all campaign roles
+        # get all campaign roles
         resp = self.bot.CampaignSQLHelper.select_field("role")
         for role_ in resp:
             # check if member is in campaign
@@ -44,10 +44,11 @@ class Listeners(commands.Cog):
                     if channel.name == "lobby":
                         await channel.send(f"{after.mention} has joined the campaign!")
 
+
 #    @commands.Cog.listener()
 #    async def on_message(self, message):
 #        if "bee" in message.content.lower() and not message.author.bot and message.channel.id == 809567702062333967:
 #            await message.channel.send("bees are insects AND animals")
- 
-def setup(bot):
-    bot.add_cog(Listeners(bot))
+
+async def setup(bot):
+    await bot.add_cog(Listeners(bot))

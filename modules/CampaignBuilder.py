@@ -165,8 +165,8 @@ class CampaignBuilder(commands.Cog):
         return embed
 
 
-def setup(bot):
-    bot.add_cog(CampaignBuilder(bot))
+async def setup(bot):
+    await bot.add_cog(CampaignBuilder(bot))
 
 
 def announcement_message(name: str):

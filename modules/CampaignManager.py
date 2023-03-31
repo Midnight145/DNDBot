@@ -250,5 +250,5 @@ class CampaignManager(commands.Cog):
         await channel.send(f"An error occurred. Error code: {str(err_code)}")
 
 
-def setup(bot):
-    bot.add_cog(CampaignManager(bot))
+async def setup(bot):
+    await bot.add_cog(CampaignManager(bot))

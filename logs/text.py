@@ -13,7 +13,7 @@ class Text(commands.Cog):
     @commands.Cog.listener()
     async def on_bulk_message_delete(self, message_list):
         message_channel = message_list[0].channel
-        filename = message_channel.name + "_on_" + datetime.datetime.utcnow().strftime("%a_%b_%d_at_%H_%M_%S") + ".txt"
+        filename = message_channel.name + "_on_" + discord.utils.utcnow().strftime("%a_%b_%d_at_%H_%M_%S") + ".txt"
         headers = ["discord tag", "user id", "content", "timestamp"]
         data = [[i.author.name + "#" + i.author.discriminator, i.author.id, i.content, i.created_at.strftime(
             "%a_%b_%d_at_%H_%M_%S")] for i in message_list]
@@ -26,7 +26,7 @@ class Text(commands.Cog):
             description=f'Messages bulk deleted from {message_channel.mention}. Deleted messages are available in the '
                         f'attached file.',
             color=discord.Color.from_rgb(241, 196, 14),
-            timestamp=datetime.datetime.utcnow()
+            timestamp=discord.utils.utcnow()
         )
         channel = message_channel.guild.get_channel(self.channel)
         file = open(filename, 'r')
@@ -43,12 +43,12 @@ class Text(commands.Cog):
             description=f'Message {message.id} deleted from {message.channel.mention}\
                     \n**Content:** {message.content}',
             color=discord.Color.from_rgb(255, 0, 0),
-            timestamp=datetime.datetime.utcnow())
-        embed.set_author(name=f"{str(message.author)} ({message.author.id})", icon_url=message.author.avatar_url)
+            timestamp=discord.utils.utcnow())
+        embed.set_author(name=f"{str(message.author)} ({message.author.id})", icon_url=message.author.display_avatar.url)
         channel = message.guild.get_channel(self.channel)
         files = [(await i.to_file()) for i in message.attachments]
         await channel.send(embed=embed, files=files)
 
 
-def setup(bot):
-    bot.add_cog(Text(bot))
+async def setup(bot):
+    await bot.add_cog(Text(bot))

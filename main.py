@@ -35,7 +35,7 @@ async def on_ready():
     print("Logged in")
     for i in bot.all_cogs:
         if i in bot.loaded_cogs: continue
-        bot.load_extension(i)
+        await bot.load_extension(i)
         bot.loaded_cogs.append(i)
     print("All cogs loaded successfully!")
 

@@ -137,7 +137,7 @@ class CampaignPlayerManager(commands.Cog):
         if not message.embeds:
             return
         found_embed = message.embeds[0]
-        if found_embed is None or found_embed == discord.Embed.Empty:
+        if found_embed is None:
             return
         campaigns = []
         name = found_embed.fields[0].value + " " + found_embed.fields[1].value
@@ -204,13 +204,13 @@ class CampaignPlayerManager(commands.Cog):
 
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign.name)
         info_channel: discord.TextChannel = self.bot.get_channel(campaign.information_channel)
-        messages = await info_channel.history(limit=1).flatten()
+        messages = [i async for i in info_channel.history(limit=1)]
         if len(messages) == 0:
             await self.bot.wait_for('message', check=lambda message: message.channel == info_channel)
             await info_channel.send(
                 content=f"Status: {campaign.current_players} out of {campaign.max_players} seats filled.")
             return
-        last_message = (await info_channel.history(limit=1).flatten())[0]
+        last_message = messages[0]
         if last_message.author == self.bot.user:
             try:
                 await last_message.edit(content=f"Status: {campaign.current_players} out of {campaign.max_players} seats "
@@ -277,7 +277,7 @@ class CampaignPlayerManager(commands.Cog):
             if message is not None:
                 await message.delete()
             new_message = await channel.send(embed=embed)
-            self.bot.db.execute("UPDATE campaigns SET status_message = ? WHERE id = ?",(new_message.id, campaign.id))
+            self.bot.db.execute("UPDATE campaigns SET status_message = ? WHERE id = ?", (new_message.id, campaign.id))
             self.bot.connection.commit()
 
     @commands.command()
@@ -365,5 +365,5 @@ class CampaignPlayerManager(commands.Cog):
         await context.send(f"Cleared waitlist for {campaign.name}")
 
 
-def setup(bot):
-    bot.add_cog(CampaignPlayerManager(bot))
+async def setup(bot):
+    await bot.add_cog(CampaignPlayerManager(bot))
