@@ -27,7 +27,7 @@ class Remind(commands.Cog):
             else:
                 seconds += temp
         old_time = time.time()
-        new_time = datetime.datetime.utcfromtimestamp(old_time + seconds)
+        new_time = datetime.datetime.fromtimestamp(old_time + seconds, datetime.timezone.utc)
         await context.send("Reminder " + phrase + " created for " + _time + "!")
         await discord.utils.sleep_until(new_time)
         await context.send(f"{context.author.mention}: {phrase}\nMessage: {context.message.jump_url}")
