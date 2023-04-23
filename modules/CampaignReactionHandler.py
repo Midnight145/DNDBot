@@ -42,9 +42,9 @@ class CampaignReactionHandler(commands.Cog):
             if not message.embeds:
                 return
 
-            if "waitlist" in message.embeds[0].title.lower() and message.id not in self.finished_waitlist:
+            if "waitlist" in message.embeds[0].title.lower() and message.embeds[0].title not in self.finished_waitlist:
                 await self.handle_waitlist(message, payload)
-                self.finished_waitlist.append(message.id)
+                self.finished_waitlist.append(message.embeds[0].title)
                 return
 
             embed = message.embeds[0]
