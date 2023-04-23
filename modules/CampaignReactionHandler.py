@@ -14,6 +14,7 @@ if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting with
 class CampaignReactionHandler(commands.Cog):
     def __init__(self, bot: 'DNDBot'):
         self.bot = bot
+        self.finished_waitlist = []
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
@@ -41,8 +42,9 @@ class CampaignReactionHandler(commands.Cog):
             if not message.embeds:
                 return
 
-            if "waitlist" in message.embeds[0].title.lower():
+            if "waitlist" in message.embeds[0].title.lower() and message.id not in self.finished_waitlist:
                 await self.handle_waitlist(message, payload)
+                self.finished_waitlist.append(message.id)
                 return
 
             embed = message.embeds[0]
