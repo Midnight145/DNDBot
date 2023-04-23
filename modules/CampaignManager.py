@@ -73,7 +73,7 @@ class CampaignManager(commands.Cog):
         await context.send(f"Category {category.name} deleted.")
 
     @commands.command()
-    @commands.has_any_role("Officer", "Dungeon Master")
+    @commands.has_any_role(809567701735440469, 812785919727894539)
     async def create_campaign(self, context: commands.Context, name: str, dungeon_master: discord.Member,
                               min_players: int, max_players: int):
         """
@@ -111,7 +111,7 @@ class CampaignManager(commands.Cog):
             await context.send("Something went wrong.")
 
     @commands.command()
-    @commands.has_any_role("Officer", "Dungeon Master")
+    @commands.has_any_role(809567701735440469, 812785919727894539)
     async def delete_campaign(self, context: commands.Context, campaign: Union[int, str], *, reason="Campaign deleted"):
         """
         :param context: Command context
@@ -195,7 +195,7 @@ class CampaignManager(commands.Cog):
         await context.send(f"Role {role.name} deleted.")
 
     @commands.command()
-    @commands.has_any_role("Officer", "Dungeon Master")
+    @commands.has_any_role(809567701735440469, 812785919727894539)
     async def drop_campaign(self, context: commands.Context, campaign: Union[int, str]):
         """
         Will drop a campaign from the database without deleting any channels
