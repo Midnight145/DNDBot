@@ -110,6 +110,21 @@ class CampaignPlayerManager(commands.Cog):
                 await member.remove_roles(member_role, player_role)
                 await member.add_roles(guest_role)
             await context.send(f"{member.mention} has been removed from the campaign!")
+            try:
+                await member.send(f"{member.display_name}: This is a notification that you have been removed from the "
+                                  f"campaign {campaign.name}. Please contact the President or the Campaign Master if "
+                                  f"you think this was a mistake.")
+            except (discord.Forbidden, discord.HTTPException):
+                await context.send("Unable to send removal message to player.")
+
+            try:
+                dm = await context.guild.fetch_member(campaign.dm)
+                await dm.send(f"{dm.mention}: This is a notification that {member.mention} has been removed from the "
+                              f"campaign {campaign}. Please contact the President or the Campaign Master if you think "
+                              f"this was a mistake.")
+            except (discord.Forbidden, discord.HTTPException):
+                await context.send("Unable to send removal message to DM.")
+
             self.bot.connection.commit()
             if campaign.current_players - 1 < campaign.max_players:
                 waitlisted_players = self.bot.CampaignSQLHelper.get_waitlist(campaign)
