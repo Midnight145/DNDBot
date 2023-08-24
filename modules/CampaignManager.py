@@ -18,6 +18,7 @@ class CampaignManager(commands.Cog):
         self.CampaignSQLHelper = self.bot.CampaignSQLHelper
 
     @commands.command(aliases=["register"])
+    @commands.has_any_role(1050188024287338567)  # dev
     async def register_campaign(self, context: commands.Context, name: str, role: discord.Role,
                                 category: discord.CategoryChannel, information_channel: discord.TextChannel,
                                 dm: discord.Member, min_players: str, max_players: str, current_players: str):
@@ -61,6 +62,7 @@ class CampaignManager(commands.Cog):
             await context.send("Something went wrong.")
 
     @commands.command()
+    @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
     async def delete_category(self, context: commands.Context, category: discord.CategoryChannel):
         """
         :param context: Command context
@@ -73,7 +75,7 @@ class CampaignManager(commands.Cog):
         await context.send(f"Category {category.name} deleted.")
 
     @commands.command()
-    @commands.has_any_role(809567701735440469, 812785919727894539)
+    @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
     async def create_campaign(self, context: commands.Context, name: str, dungeon_master: discord.Member,
                               min_players: int, max_players: int):
         """
@@ -111,7 +113,7 @@ class CampaignManager(commands.Cog):
             await context.send("Something went wrong.")
 
     @commands.command()
-    @commands.has_any_role(809567701735440469, 812785919727894539)
+    @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
     async def delete_campaign(self, context: commands.Context, campaign: Union[int, str], *, reason="Campaign deleted"):
         """
         :param context: Command context
@@ -159,6 +161,7 @@ class CampaignManager(commands.Cog):
                                    f"removal from the campaign.")
 
     @commands.command()
+    @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
     async def rename_campaign(self, context: commands.Context, campaign: Union[int, str], *, name: str):
         """
         :param context: Command context

@@ -17,6 +17,7 @@ class CampaignPlayerManager(commands.Cog):
         self.bot = bot
         self.bot.CampaignPlayerManager = self
 
+    @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
     @commands.command(aliases=["add_player"])
     async def add_player_command(self, context: commands.Context, member: discord.Member, campaign_id: Union[int, str]):
         await self.add_player(context.channel, member, campaign_id)
@@ -66,6 +67,7 @@ class CampaignPlayerManager(commands.Cog):
             await channel.send("An unknown error occurred.")
             return False
 
+    @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
     @commands.command()
     async def remove_player(self, context: commands.Context, member: Union[discord.Member, FakeMember],
                             campaign_id: Union[int, str]):
@@ -120,7 +122,7 @@ class CampaignPlayerManager(commands.Cog):
             try:
                 dm = await context.guild.fetch_member(campaign.dm)
                 await dm.send(f"{dm.mention}: This is a notification that {member.mention} has been removed from the "
-                              f"campaign {campaign}. Please contact the President or the Campaign Master if you think "
+                              f"campaign {campaign.name}. Please contact the President or the Campaign Master if you think "
                               f"this was a mistake.")
             except (discord.Forbidden, discord.HTTPException):
                 await context.send("Unable to send removal message to DM.")
@@ -137,6 +139,7 @@ class CampaignPlayerManager(commands.Cog):
             await context.send("An unknown error occurred.")
         await self.update_status(campaign)
 
+    @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
     @commands.command()
     async def remove_missing_player(self, context, member: int, campaign_id: Union[int, str]):
         await self.remove_player(context, FakeMember(member), campaign_id)
@@ -347,6 +350,7 @@ class CampaignPlayerManager(commands.Cog):
         await self.update_status_embed(campaign)
         await context.send("done")
 
+    @commands.has_any_role(1050188024287338567)  # dev
     @commands.command()
     async def create_status(self, context: commands.Context, campaign: Union[int, str]):
         async def create_status_message() -> discord.Embed:
