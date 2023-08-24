@@ -158,6 +158,14 @@ class CampaignSQLHelper:
             traceback.print_exc()
             return False
 
+    def set_max_players(self, campaign: CampaignInfo, amount: int):
+        try:
+            self.bot.db.execute(f"UPDATE campaigns SET max_players = {amount} WHERE id= {campaign.id}")
+            return True
+        except Exception:
+            traceback.print_exc()
+            return False
+
     def __increment_players(self, campaign: CampaignInfo, amount):
         try:
             self.bot.db.execute(f"UPDATE campaigns SET current_players = {campaign.current_players + amount} WHERE "
