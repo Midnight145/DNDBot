@@ -367,17 +367,35 @@ class CampaignPlayerManager(commands.Cog):
         message = await context.guild.get_channel(self.bot.config["status_channel"]).send(
             embed=(await create_status_message()))
         self.bot.db.execute("UPDATE campaigns SET status_message = ? WHERE id = ?", (message.id, campaign.id))
+        self.bot.connection.commit()
 
+    @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
+    @commands.command()
+    async def set_player_count(self, context: discord.Context, count: int, campaign: Union[int, str]):
+        campaign = self.bot.CampaignSQLHelper.select_campaign(campaign)
+        commit = self.bot.CampaignSQLHelper.set_max_players(campaign, count)
+        if commit:
+            self.bot.connection.commit()
+            await context.send(f"Set max players for {campaign.name} to {count}.")
+        else:
+            await context.send("An unknown error occurred.")
+
+    @commands.has_any_role(1050188024287338567)  # dev
     @commands.command()
     async def commit(self, context):
         self.bot.connection.commit()
         await context.send("done")
 
+    @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
     @commands.command()
     async def clear_waitlist(self, context: commands.Context, campaign: Union[int, str]):
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign)
-        self.bot.CampaignSQLHelper.clear_waitlist(campaign)
-        await context.send(f"Cleared waitlist for {campaign.name}")
+        commit = self.bot.CampaignSQLHelper.clear_waitlist(campaign)
+        if commit:
+            await context.send(f"Cleared waitlist for {campaign.name}")
+            self.bot.connection.commit()
+        else:
+            await context.send("An unknown error occurred.")
 
 
 async def setup(bot):
