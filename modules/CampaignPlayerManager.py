@@ -375,11 +375,12 @@ class CampaignPlayerManager(commands.Cog):
 
     @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
     @commands.command()
-    async def set_player_count(self, context: discord.Context, count: int, campaign: Union[int, str]):
+    async def set_player_count(self, context: commands.Context, count: int, campaign: Union[int, str]):
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign)
         commit = self.bot.CampaignSQLHelper.set_max_players(campaign, count)
         if commit:
             self.bot.connection.commit()
+            await self.update_status(campaign)
             await context.send(f"Set max players for {campaign.name} to {count}.")
         else:
             await context.send("An unknown error occurred.")
