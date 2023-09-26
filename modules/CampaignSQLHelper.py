@@ -1,6 +1,7 @@
 import sqlite3
 import string
 import traceback
+import typing
 from typing import Union, Optional, TYPE_CHECKING
 
 import discord
@@ -29,7 +30,7 @@ class CampaignSQLHelper:
         try:
             self.bot.db.execute(f"CREATE TABLE IF NOT EXISTS {self.__get_table_name(vals.name)} "
                                 "(pid INTEGER PRIMARY KEY AUTOINCREMENT, id INTEGER UNIQUE, waitlisted INTEGER, "
-                                "name TEXT)")
+                                "name TEXT, locked INTEGER DEFAULT 0)")
             self.bot.db.execute(
                 f"INSERT INTO campaigns (name, dm, role, category, information_channel, min_players, max_players, "
                 f"current_players, status_message) "
@@ -57,6 +58,14 @@ class CampaignSQLHelper:
             else:
                 self.bot.db.execute(f"DELETE FROM campaigns WHERE name LIKE {campaign}")
                 self.bot.db.execute(f"DROP TABLE {self.__get_table_name(campaign)}")
+            return True
+        except Exception:
+            traceback.print_exc()
+            return False
+
+    def set_campaign_status(self, campaign: CampaignInfo, status: typing.Literal[0, 1]) -> bool:
+        try:
+            self.bot.db.execute(f"UPDATE campaigns SET locked = {status} WHERE id = {campaign.id}")
             return True
         except Exception:
             traceback.print_exc()

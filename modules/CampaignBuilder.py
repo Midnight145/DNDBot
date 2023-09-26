@@ -36,6 +36,7 @@ class CampaignBuilder(commands.Cog):
         retval.name = name
         retval.current_players = 0
         retval.dm = dm.id
+        retval.locked = 0
 
         guild = context.guild
         # create campaign role

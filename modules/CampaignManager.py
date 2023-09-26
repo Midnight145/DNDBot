@@ -21,7 +21,7 @@ class CampaignManager(commands.Cog):
     @commands.has_any_role(1050188024287338567)  # dev
     async def register_campaign(self, context: commands.Context, name: str, role: discord.Role,
                                 category: discord.CategoryChannel, information_channel: discord.TextChannel,
-                                dm: discord.Member, min_players: str, max_players: str, current_players: str):
+                                dm: discord.Member, min_players: str, max_players: str, current_players: str, locked: int = 0):
         """
         :param context: Command context
         :param name: Campaign name
@@ -43,6 +43,7 @@ class CampaignManager(commands.Cog):
         campaign_info.min_players = int(min_players)
         campaign_info.max_players = int(max_players)
         campaign_info.current_players = int(current_players)
+        campaign_info.locked = locked
 
         commit = self.CampaignSQLHelper.create_campaign(campaign_info)
         if commit:
@@ -216,13 +217,49 @@ class CampaignManager(commands.Cog):
         :param context: Command context
         :return: None
         """
-        message_content = ""
+        message_content = "```\n"
         resp = self.bot.db.execute(f"SELECT * FROM campaigns").fetchall()
         for row in resp:
             message_content += f"{row['id']}: {row['name']}, DM: {str(context.guild.get_member(row['dm']))}, " \
-                               f"{row['current_players']}/{row['max_players']}\n"
-
+                               f"{row['current_players']}/{row['max_players']} {'Locked' if row['locked'] else ''}\n"
+        message_content += "```"
         await context.send(message_content)
+
+    @commands.command(aliases=["lock"])
+    async def lock_campaign(self, context: commands.Context, campaign: Union[int, str]):
+        """
+        :param context: Command context
+        :param campaign: Either campaign name or campaign ID
+        :return: None
+        """
+        campaign = self.CampaignSQLHelper.select_campaign(campaign)
+        campaign.locked = 1
+        commit = self.CampaignSQLHelper.set_campaign_status(campaign, 1)  # lock
+        if commit:
+            self.bot.connection.commit()
+            await self.bot.CampaignPlayerManager.update_status(campaign)
+            await context.send(f"Campaign {campaign.name} locked.")
+
+        else:
+            print("Error locking campaign")
+
+    @commands.command(aliases=["unlock"])
+    async def unlock_campaign(self, context: commands.Context, campaign: Union[int, str]):
+        """
+        :param context: Command context
+        :param campaign: Either campaign name or campaign ID
+        :return: None
+        """
+        campaign = self.CampaignSQLHelper.select_campaign(campaign)
+        campaign.locked = 0
+        commit = self.CampaignSQLHelper.set_campaign_status(campaign, 0)  # unlock
+        if commit:
+            self.bot.connection.commit()
+            await self.bot.CampaignPlayerManager.update_status(campaign)
+            await context.send(f"Campaign {campaign.name} unlocked.")
+
+        else:
+            print("Error unlocking campaign")
 
     @commands.command()
     async def list_players(self, context: commands.Context, campaign: Union[int, str]):

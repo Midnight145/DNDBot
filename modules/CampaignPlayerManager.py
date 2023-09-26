@@ -264,9 +264,10 @@ class CampaignPlayerManager(commands.Cog):
         embed.add_field(name="DM", value=(await self.bot.fetch_user(campaign.dm)).mention)
         embed.add_field(name="Channel: ", value=f"<#{campaign.information_channel}>", inline=False)
         embed.add_field(name="Status: ",
-                        value="✅ Open" if campaign.current_players < campaign.max_players else "❌ Closed",
+                        value="✅ Open" if (campaign.current_players < campaign.max_players and not campaign.locked) else "❌ Closed",
                         inline=False)
         embed.add_field(name="Players: ", value=f"{campaign.current_players}/{campaign.max_players}")
+        embed.add_field(name="Locked", value=f"{bool(campaign.locked)}", inline=False)
 
         return embed
 
@@ -277,14 +278,16 @@ class CampaignPlayerManager(commands.Cog):
             message = await channel.fetch_message(campaign.status_message)
             embed: discord.Embed = message.embeds[0]
             embed.title = f"{campaign.name} Status"
-            if len(embed.fields) == 3:
+            if len(embed.fields) == 4:
                 embed.add_field(name="tmp", value="tmp", inline=False)
             embed.set_field_at(0, name="DM", value=(await self.bot.fetch_user(campaign.dm)).mention)
             embed.set_field_at(1, name="Channel: ", value=f"<#{campaign.information_channel}>", inline=False)
-            embed.set_field_at(2, name="Status: ", value="✅ Open" if campaign.current_players < campaign.max_players
+            embed.set_field_at(2, name="Status: ", value="✅ Open" if campaign.current_players < campaign.max_players and not campaign.locked
                             else "❌ Closed", inline=False)
             embed.set_field_at(3, name="Players: ", value=f"{campaign.current_players}/{campaign.max_players}",
                             inline=False)
+            embed.set_field_at(4, name="Locked", value=f"{bool(campaign.locked)}", inline=False)
+
         except discord.NotFound:
             embed = await self.create_status_message(campaign)
 

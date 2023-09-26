@@ -4,7 +4,7 @@ import discord
 class CampaignInfo:
     def __init__(self, name: str = None, role: int = None, category: int = None,
                  information_channel: int = None, dm: int = None, min_players: int = None,
-                 max_players: int = None, current_players: int = 0, status_message: int = None, id = None):
+                 max_players: int = None, current_players: int = 0, status_message: int = None, id = None, locked = 0):
         """
         Holds the information about a given campaign, normally created by CampaignSQLHelper from a row. Can be
         initialized to None and filled manually, or can be filled via constructor.
@@ -27,6 +27,7 @@ class CampaignInfo:
         self.current_players: int = current_players
         self.status_message: int = status_message
         self.id = id
+        self.locked = locked
 
     # allows for dictionary-like retrieval syntax as necessary
     def __getitem__(self, item):
