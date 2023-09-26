@@ -260,6 +260,12 @@ class Utilities(commands.Cog):
             await context.send(f"Logged {member.mention} in {channel.mention}", file=file)
             os.remove(filename)
 
+    @commands.command()
+    async def inrole(self, context: commands.Context, role: discord.Role):
+        to_send = "Members in role {role.name}:"
+        for member in role.members:
+            to_send += str(member) + "\n"
+        await context.send(to_send)
 
 async def setup(bot):
     await bot.add_cog(Utilities(bot))
