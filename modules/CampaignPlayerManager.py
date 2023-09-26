@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import traceback
 from typing import Union, TYPE_CHECKING
 
 import discord
@@ -146,7 +147,6 @@ class CampaignPlayerManager(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-
         await self.apply(message)
 
     async def apply(self, message):
@@ -404,6 +404,52 @@ class CampaignPlayerManager(commands.Cog):
             self.bot.connection.commit()
         else:
             await context.send("An unknown error occurred.")
+
+    @commands.command()
+    async def handle_waitlist(self, context: commands.Context, campaign: Union[int, str]):
+        campaign = self.bot.CampaignSQLHelper.select_campaign(campaign)
+        if context.author.id != campaign.dm:
+            await context.send("You are not the DM of this campaign.")
+            return
+        waitlisted_players = self.bot.CampaignSQLHelper.get_waitlist(campaign)
+        if len(waitlisted_players) == 0:
+            await context.send("No waitlisted players.")
+            return
+        waitlisted_players.sort(key=lambda x: x["pid"])
+        member = context.guild.get_member(waitlisted_players[0]["id"])
+        name = member.nick if member.nick else member.display_name
+        app_channel = context.guild.get_channel(self.bot.config["applications_channel"])
+
+        dm = await context.guild.fetch_member(campaign.dm)
+        embed_ = discord.Embed(
+            title=f"New Application for {campaign.name} -- from waitlist",
+            timestamp=datetime.datetime.utcnow()
+        )
+        embed_.add_field(name="Campaign", value=campaign.name, inline=False)
+        embed_.add_field(name="DM", value=str(dm), inline=False)
+        embed_.add_field(name="Name", value=name)
+        embed_.add_field(name="Discord", value=str(member))
+        embed_.add_field(name="Discord ID", value=str(member.id))
+        embed_.set_footer(text="React with a green checkmark to approve or a red X to deny.")
+
+        to_react = await app_channel.send(dm.mention, embed=embed_)
+
+        await to_react.add_reaction("✅")
+        await to_react.add_reaction("❌")
+        await context.send(to_react.jump_url)
+
+    @commands.command()
+    async def update_player_count(self, context: commands.Context, campaign: Union[int, str]):
+        campaign = self.bot.CampaignSQLHelper.select_campaign(campaign)
+        players = self.bot.CampaignSQLHelper.get_players(campaign)
+        try:
+            self.bot.db.execute(f"UPDATE campaigns SET current_players = ? WHERE id = ?", (len(players), campaign.id))
+        except Exception:
+            traceback.print_exc()
+            await context.send("An unknown error occurred.")
+            return
+        self.bot.connection.commit()
+        await context.send(f"Campaign {campaign.name} updated to {len(players)} players.")
 
 
 async def setup(bot):

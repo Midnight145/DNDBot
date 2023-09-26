@@ -119,14 +119,16 @@ class CampaignSQLHelper:
 
     def add_player(self, campaign: CampaignInfo, player: discord.Member):
         try:
-            waitlisted = 0
-            self.bot.db.execute(f"INSERT INTO {self.__get_table_name(campaign.name)} (id, waitlisted, name) VALUES ("
-                                f"?, ?, ?)", (player.id, waitlisted, player.display_name)) 
-            if not waitlisted:
+            is_waitlisted = self.bot.db.execute(f"SELECT waitlisted FROM {self.__get_table_name(campaign.name)} WHERE id = ?", (player.id,)).fetchone()
+            if is_waitlisted:
                 self.__increment_players(campaign, 1)
-            return True
+                return self.unwaitlist(campaign, player)
+            else:
+                self.bot.db.execute(f"INSERT INTO {self.__get_table_name(campaign.name)} (id, waitlisted, name) VALUES ("
+                                    f"?, ?, ?)", (player.id, 0, player.display_name))
+                self.__increment_players(campaign, 1)
+                return True
         except Exception:
-
             traceback.print_exc()
             return False
 

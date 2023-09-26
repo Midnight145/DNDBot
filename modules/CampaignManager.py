@@ -265,15 +265,16 @@ class CampaignManager(commands.Cog):
     async def list_players(self, context: commands.Context, campaign: Union[int, str]):
         campaign = self.CampaignSQLHelper.select_campaign(campaign)
         players = self.CampaignSQLHelper.get_players(campaign)
-        message = ""
         if players is None:
             await context.send("An error occurred.")
             return
+        message = ""
         for i in players:
             if (member := context.guild.get_member(i["id"])) is not None:
                 message += f"{member.display_name} ({member.id})\n"
             else:
                 message += f"Could not resolve user {i['id']} -- Perhaps they left?\n"
+
         await context.send(message)
 
     async def handle_error(self):

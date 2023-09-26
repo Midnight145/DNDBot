@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import discord
 from discord.ext import commands
 
+from . import CampaignInfo
 from .CampaignBuilder import verification_denied
 
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
@@ -144,6 +145,24 @@ class CampaignReactionHandler(commands.Cog):
         await message.delete()
         await channel.send(f"{member.mention} application for the campaign {campaign.name} has been denied by the DM.")
 
+    @staticmethod
+    async def __create_waitlist_embed(member: discord.Member, campaign: CampaignInfo) -> discord.Embed:
+        name = member.nick if member.nick else member.display_name
+
+        dm = await member.guild.fetch_member(campaign.dm)
+        embed = discord.Embed(
+            title=f"New Application for {campaign.name} -- from waitlist",
+            timestamp=datetime.datetime.utcnow()
+        )
+        embed.add_field(name="Campaign", value=campaign.name, inline=False)
+        embed.add_field(name="DM", value=str(dm), inline=False)
+        embed.add_field(name="Name", value=name)
+        embed.add_field(name="Discord", value=str(member))
+        embed.add_field(name="Discord ID", value=str(member.id))
+        embed.set_footer(text="React with a green checkmark to approve or a red X to deny.")
+
+        return embed
+
     async def handle_waitlist(self, message, payload: discord.RawReactionActionEvent):
         """
         :param message: Message retrieved from reaction payload
@@ -151,20 +170,9 @@ class CampaignReactionHandler(commands.Cog):
         :return: None
         """
         async def unwaitlist_apply():
-            name = member.nick if member.nick else member.display_name
-            app_channel = channel.guild.get_channel(self.bot.config["applications_channel"])
-
-            dm = await channel.guild.fetch_member(campaign.dm)
-            embed_ = discord.Embed(
-                title=f"New Application for {campaign.name} -- from waitlist",
-                timestamp=datetime.datetime.utcnow()
-            )
-            embed_.add_field(name="Campaign", value=campaign.name, inline=False)
-            embed_.add_field(name="DM", value=str(dm), inline=False)
-            embed_.add_field(name="Name", value=name)
-            embed_.add_field(name="Discord", value=str(member))
-            embed_.add_field(name="Discord ID", value=str(member.id))
-            embed_.set_footer(text="React with a green checkmark to approve or a red X to deny.")
+            embed_ = await self.__create_waitlist_embed(member, campaign)
+            dm = await member.guild.fetch_member(campaign.dm)
+            app_channel = self.bot.get_channel(self.bot.config["applications_channel"])
 
             to_react = await app_channel.send(dm.mention, embed=embed_)
 
@@ -172,7 +180,6 @@ class CampaignReactionHandler(commands.Cog):
             await to_react.add_reaction("❌")
             await self.bot.CampaignPlayerManager.update_status(campaign)
 
-        channel: discord.TextChannel = self.bot.get_channel(payload.channel_id)  # queuing bot for text channel
         embed = message.embeds[0]
         discord_id = int(embed.fields[4].value)
         member = await message.guild.fetch_member(discord_id)
@@ -185,7 +192,11 @@ class CampaignReactionHandler(commands.Cog):
             await self.deny_waitlisted_player(message, member, payload.member)
             campaign_name = embed.fields[0].value
             campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
-            await unwaitlist_apply()
+            waitlisted_players = self.bot.CampaignSQLHelper.get_waitlisted_players(campaign)
+            waitlisted_players.sort(key=lambda x: x['pid'])
+            if len(waitlisted_players) > 0:
+                member = await message.guild.fetch_member(waitlisted_players[0]['id'])
+                await unwaitlist_apply()
 
     async def approve_waitlisted_player(self, message: discord.Message, member: discord.Member, reactor: discord.Member):
         """
