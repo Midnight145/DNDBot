@@ -262,9 +262,10 @@ class Utilities(commands.Cog):
 
     @commands.command()
     async def inrole(self, context: commands.Context, role: discord.Role):
-        to_send = "Members in role {role.name}:"
+        to_send = f"Members in role {role.name}:\n"
         for member in role.members:
-            to_send += str(member) + "\n"
+            to_send += str(member) + f"  ({member.display_name})\n"
+
         await context.send(to_send)
 
 async def setup(bot):
