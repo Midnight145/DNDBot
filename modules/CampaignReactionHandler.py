@@ -214,7 +214,18 @@ class CampaignReactionHandler(commands.Cog):
 
         if reactor.id != dm.id:
             return
-
+        if campaign.current_players >= campaign.max_players:
+            waitlisted_players = self.bot.CampaignSQLHelper.get_waitlisted_players(campaign)
+            if member.id in [player['id'] for player in waitlisted_players]:
+                await channel.send(f"{member.mention} is already on the waitlist for {campaign.name}.")
+                return
+            commit = self.bot.CampaignSQLHelper.waitlist_player(campaign, member)
+            if commit:
+                await channel.send(f"{member.mention} has been added to the campaign {campaign.name}'s waitlist")
+                await message.delete()
+                self.bot.connection.commit()
+            else:
+                await message.channel.send("An unknown error occurred while adding the player to the waitlist.")
         if await self.bot.CampaignPlayerManager.add_player(message.channel, member, campaign_name, waitlisted=True):
             await channel.send(f"{member.mention} has been added to the campaign {campaign.name}'s waitlist")
             await message.delete()
