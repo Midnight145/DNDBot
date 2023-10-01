@@ -1,4 +1,5 @@
 import sys
+import typing
 
 import discord
 from discord.ext import commands
@@ -289,6 +290,25 @@ class CampaignManager(commands.Cog):
         handler = TracebackHandler(err_code, f"{exc_type.__name__}: {str(exc_name)}", original)
         self.bot.traceback[err_code] = handler
         await channel.send(f"An error occurred. Error code: {str(err_code)}")
+
+    @commands.command()
+    async def fix_perms(self, context: commands.Context, channel: typing.Union[discord.CategoryChannel, discord.TextChannel], campaign_id: int):
+        if isinstance(channel, discord.TextChannel):
+            channel = channel.category
+        guild = channel.guild
+        campaign = self.CampaignSQLHelper.select_campaign(campaign_id)
+        role = guild.get_role(campaign.role)
+        dm = guild.get_member(campaign.dm)
+        overwrites = {guild.default_role: discord.PermissionOverwrite(read_messages=False),
+                      role: discord.PermissionOverwrite(send_messages=True, read_messages=True),
+                      dm: discord.PermissionOverwrite(manage_channels=True, manage_permissions=True,
+                                                      send_messages=True, manage_messages=True)
+                      }
+        await channel.edit(overwrites=overwrites)
+        for i in channel.channels:
+            await i.edit(overwrites=overwrites)
+        await context.send(f"Permissions have been fixed for {campaign.name}")
+
 
 
 async def setup(bot):
