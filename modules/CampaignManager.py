@@ -218,13 +218,21 @@ class CampaignManager(commands.Cog):
         :param context: Command context
         :return: None
         """
-        message_content = "```\n"
+        message_content = ""
         resp = self.bot.db.execute(f"SELECT * FROM campaigns").fetchall()
         for row in resp:
             message_content += f"{row['id']}: {row['name']}, DM: {str(context.guild.get_member(row['dm']))}, " \
                                f"{row['current_players']}/{row['max_players']} {'Locked' if row['locked'] else ''}\n"
-        message_content += "```"
-        await context.send(message_content)
+
+        if len(message_content) <= 2000:
+            await context.send("```\n"+message_content+"```")
+            return
+        else:
+            campaigns = message_content.split("\n")
+            message_1 = campaigns[:len(campaigns)//2]
+            message_2 = campaigns[len(campaigns)//2:]
+            await context.send("```\n"+'\n'.join(message_1)+"```")
+            await context.send("```\n"+'\n'.join(message_2)+"```")
 
     @commands.command(aliases=["lock"])
     async def lock_campaign(self, context: commands.Context, campaign: Union[int, str]):
