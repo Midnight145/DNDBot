@@ -206,7 +206,7 @@ class Utilities(commands.Cog):
         if limit is None:
             check = is_me
         else:
-            check = None
+            check = lambda x: True
         await context.channel.purge(limit=int(limit) if limit is not None else 100, check=check)
 
     @commands.command()
