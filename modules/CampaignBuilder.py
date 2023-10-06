@@ -97,11 +97,12 @@ class CampaignBuilder(commands.Cog):
         # fetch global campaign information channel
         global_channel = self.bot.get_channel(info.information_channel)
         # move channel to archive category
-        try:
-            await global_channel.move(category=category.guild.get_channel(self.bot.config["archive_category"]),
-                                      reason="campaign deleted", end=True, sync_permissions=True)
-        except:
-            await global_channel.delete()
+        # try:
+        #     await global_channel.move(category=category.guild.get_channel(self.bot.config["archive_category"]),
+        #                               reason="campaign deleted", end=True, sync_permissions=True)
+        # except:
+        #     await global_channel.delete()
+        await global_channel.delete()
         # delete channels
         for channel in category.channels:
             await channel.delete()
