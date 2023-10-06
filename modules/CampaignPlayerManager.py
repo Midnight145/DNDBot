@@ -219,27 +219,25 @@ class CampaignPlayerManager(commands.Cog):
         await context.send(embed=embed)
 
     async def update_status(self, campaign: CampaignInfo):
-
+        message_text = f"Status: {campaign.current_players} out of {campaign.max_players} seats filled.\nLocked: {'Yes' if campaign.locked else 'No'}"
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign.name)
         info_channel: discord.TextChannel = self.bot.get_channel(campaign.information_channel)
         messages = [i async for i in info_channel.history(limit=1)]
         if len(messages) == 0:
             await self.bot.wait_for('message', check=lambda message: message.channel == info_channel)
             await info_channel.send(
-                content=f"Status: {campaign.current_players} out of {campaign.max_players} seats filled.")
+                content=message_text)
             return
         last_message = messages[0]
         if last_message.author == self.bot.user:
             try:
-                await last_message.edit(content=f"Status: {campaign.current_players} out of {campaign.max_players} seats "
-                                                f"filled.")
+                await last_message.edit(content=message_text)
             except discord.HTTPException:
                 await info_channel.send(
-                    content=f"Status: {campaign.current_players} out of {campaign.max_players} seats filled.")
+                    content=message_text)
                 await last_message.delete()
         else:
-            await info_channel.send(content=f"Status: {campaign.current_players} out of {campaign.max_players} seats "
-                                            f"filled.")
+            await info_channel.send(content=message_text)
         await self.update_status_embed(campaign)
 
     @commands.command()
