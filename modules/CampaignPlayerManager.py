@@ -449,6 +449,12 @@ class CampaignPlayerManager(commands.Cog):
         self.bot.connection.commit()
         await context.send(f"Campaign {campaign.name} updated to {len(players)} players.")
 
+    @commands.command()
+    async def sync_player_count(self, context: commands.Context):
+        for i in self.bot.CampaignSQLHelper.get_campaigns():
+            await self.update_player_count(context, i['id'])
+            await asyncio.sleep(.5)
+
 
 async def setup(bot):
     await bot.add_cog(CampaignPlayerManager(bot))

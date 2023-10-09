@@ -21,6 +21,9 @@ class CampaignSQLHelper:
     def __init__(self, bot: 'DNDBot'):
         self.bot = bot
 
+    def get_campaigns(self) -> list[sqlite3.Row]:
+        return self.bot.db.execute("SELECT * FROM campaigns").fetchall()
+
     def create_campaign(self, vals: CampaignInfo) -> bool:
         """
         Adds a new campaign to the database
@@ -147,6 +150,7 @@ class CampaignSQLHelper:
             waitlisted = 0
             self.bot.db.execute(f"UPDATE {self.__get_table_name(campaign.name)} SET waitlisted = ? WHERE id = ?",
                                 (waitlisted, player.id))
+            self.__increment_players(campaign, 1)
             return True
         except Exception:
             traceback.print_exc()
