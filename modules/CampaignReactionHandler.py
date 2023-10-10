@@ -9,7 +9,7 @@ from . import CampaignInfo
 from .CampaignBuilder import verification_denied
 
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
-    from ..bot import DNDBot
+    from ..DNDBot import DNDBot
 
 
 class CampaignReactionHandler(commands.Cog):

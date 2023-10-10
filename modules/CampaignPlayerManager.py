@@ -10,7 +10,7 @@ from modules import CampaignInfo
 from .FakeMember import FakeMember
 
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
-    from ..bot import DNDBot
+    from ..DNDBot import DNDBot
 
 
 class CampaignPlayerManager(commands.Cog):
@@ -161,7 +161,7 @@ class CampaignPlayerManager(commands.Cog):
         name = found_embed.fields[0].value + " " + found_embed.fields[1].value
         member = await message.guild.fetch_member(int(found_embed.fields[2].value))
         channel = message.guild.get_channel(self.bot.config["applications_channel"])
-        for i in found_embed.fields[10::]:
+        for i in found_embed.fields[1::]:
             if "which of the following" not in i.name.lower():
                 continue
             campaign_name = i.value

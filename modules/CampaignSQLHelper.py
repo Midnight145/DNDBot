@@ -10,7 +10,7 @@ from .CampaignInfo import CampaignInfo
 from .FakeMember import FakeMember
 
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
-    from ..bot import DNDBot
+    from ..DNDBot import DNDBot
 
 
 class CampaignSQLHelper:
