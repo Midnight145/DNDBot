@@ -3,9 +3,9 @@ from typing import Union, Optional
 
 from discord.ext import commands
 import traceback
-from discord.ext.buttons import Paginator
 import io
 import discord
+from discord.ext.buttons import Paginator
 
 
 class TracebackHandler:

@@ -1,11 +1,25 @@
-import sys
-import discord
+import asyncio
 import json
 import sqlite3
+import sys
 
-from bot import DNDBot
+import discord
+from fastapi import FastAPI
+
+from DNDBot import DNDBot
+from modules.api import api
 from modules.errorhandler import TracebackHandler
 
+
+def dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
+
+
+app = FastAPI()
+app.include_router(api.router)
 with open('config.json') as config_file:
     config = json.load(config_file)
 with open('token.txt', 'r') as token:
@@ -15,10 +29,13 @@ with open('token.txt', 'r') as token:
 async def get_prefix(bot_, message):
     return config["prefix"]
 
+
 GUILD_ID = config["server"]
 
-connection = sqlite3.connect(config["database_file"])
-connection.row_factory = sqlite3.Row
+connection = sqlite3.connect(config["database_file"], check_same_thread=False)
+# connection.row_factory = sqlite3.Row
+
+connection.row_factory = dict_factory
 db = connection.cursor()
 db.execute("CREATE TABLE IF NOT EXISTS campaigns (id INTEGER PRIMARY KEY, name TEXT, dm INTEGER, role INTEGER, "
            "category INTEGER, information_channel INTEGER, min_players INTEGER, max_players INTEGER, current_players INTEGER, status_message INTEGER)")
@@ -28,6 +45,7 @@ connection.commit()
 intents = discord.Intents.all()
 
 bot = DNDBot(db, connection, config, command_prefix=get_prefix, intents=intents)
+DNDBot.instance = bot
 
 
 @bot.event
@@ -54,4 +72,12 @@ async def on_error(event, *args, **kwargs):
     bot.traceback[err_code] = handler
     await channel.send(f"An error occurred in {event}. Error code: {str(err_code)}")
 
-bot.run(TOKEN)
+
+async def start():
+    try:
+        await bot.start(TOKEN)
+    except KeyboardInterrupt:
+        await bot.close()
+
+
+asyncio.create_task(start())
