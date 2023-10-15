@@ -13,7 +13,7 @@ class Listeners(commands.Cog):
         resp = self.bot.CampaignSQLHelper.select_field("role")
         for role_ in resp:
             # check if member is in campaign
-            role = member.guild.get_role(role_[0])
+            role = member.guild.get_role(role_['role'])
             if role is None:
                 continue
             if member in role.members:
