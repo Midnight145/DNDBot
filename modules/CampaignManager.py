@@ -79,7 +79,7 @@ class CampaignManager(commands.Cog):
     @commands.command()
     @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
     async def create_campaign(self, context: commands.Context, name: str, dungeon_master: discord.Member,
-                              min_players: int, max_players: int):
+                              min_players: int, max_players: int, location: str, playstyle: str):
         """
         :param context: Command context
         :param name: Campaign name
@@ -89,8 +89,8 @@ class CampaignManager(commands.Cog):
         :return: None
         """
 
-        campaign_info = await self.CampaignBuilder.create_campaign(context, name, dungeon_master, min_players,
-                                                                   max_players)
+        campaign_info = await self.CampaignBuilder.create_campaign(context.guild, name, dungeon_master, min_players,
+                                                                   max_players, location, playstyle)
 
         commit = self.CampaignSQLHelper.create_campaign(campaign_info)
         if commit:

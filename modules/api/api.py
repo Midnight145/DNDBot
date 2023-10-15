@@ -6,11 +6,13 @@ from fastapi import Response, status, APIRouter
 
 from modules.api.Permissions import permissions, Permissions
 
-from .structs import CampaignInfo, CampaignApplication
+from .structs import CampaignApplication, PartialCampaignInfo
+from modules.CampaignInfo import CampaignInfo
 from DNDBot import DNDBot
-
+from .. import CampaignBuilder
 
 router = APIRouter()
+guild = None
 
 
 @router.get("/campaigns")
@@ -44,8 +46,18 @@ async def get_players(campaign_id: typing.Union[int, str], auth: str, response: 
 
 @router.post("/campaigns/create")
 @permissions(Permissions.CAMPAIGN_CREATE)
-async def create_campaign(auth: str, campaign: CampaignInfo, response: Response):
-    commit = DNDBot.instance.CampaignSQLHelper.create_campaign(campaign)
+async def create_campaign(auth: str, campaign: PartialCampaignInfo, response: Response):
+    global guild
+    if guild is None:
+        guild = DNDBot.instance.get_guild(DNDBot.instance.config["server"])
+    campaign.dm = guild.get_member(campaign.dm)
+    campaign_info = await DNDBot.instance.CampaignBuilder.create_campaign(guild, campaign.name, campaign.dm, campaign.min_players, campaign.max_players, campaign.location, campaign.playstyle, campaign.info_message)
+
+    # todo: make this consistent with the rest of the code, most args to create_campaign are unnecessary
+    for attr in campaign.__dict__:
+        setattr(campaign_info, attr, getattr(campaign, attr))
+
+    commit = DNDBot.instance.CampaignSQLHelper.create_campaign(campaign_info)
     if not commit:
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return json.dumps({"error": "Failed to create campaign"})

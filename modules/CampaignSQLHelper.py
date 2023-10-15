@@ -21,7 +21,7 @@ class CampaignSQLHelper:
     def __init__(self, bot: 'DNDBot'):
         self.bot = bot
 
-    def get_campaigns(self) -> list[sqlite3.Row]:
+    def get_campaigns(self) -> list[dict]:
         return self.bot.db.execute("SELECT * FROM campaigns").fetchall()
 
     def create_campaign(self, vals: CampaignInfo) -> bool:
@@ -31,15 +31,29 @@ class CampaignSQLHelper:
         :return: Whether we should commit to database
         """
         try:
-            self.bot.db.execute(f"CREATE TABLE IF NOT EXISTS {self.__get_table_name(vals.name)} "
-                                "(pid INTEGER PRIMARY KEY AUTOINCREMENT, id INTEGER UNIQUE, waitlisted INTEGER, "
-                                "name TEXT, locked INTEGER DEFAULT 0)")
             self.bot.db.execute(
                 f"INSERT INTO campaigns (name, dm, role, category, information_channel, min_players, max_players, "
-                f"current_players, status_message) "
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                f"current_players, status_message, location, playstyle, session_length, meeting_frequency, "
+                f"meeting_time, system, new_player_friendly) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (vals.name, vals.dm, vals.role, vals.category, vals.information_channel, vals.min_players,
-                 vals.max_players, vals.current_players, vals.status_message))
+                 vals.max_players, vals.current_players, vals.status_message, vals.location, vals.playstyle,
+                 vals.session_length, vals.meeting_frequency, vals.meeting_time, vals.system, vals.new_player_friendly))
+            return True
+        except Exception:
+            traceback.print_exc()
+            return False
+
+    def set_campaign_info(self, campaign: CampaignInfo, info: str) -> bool:
+        try:
+            self.bot.db.execute(f"UPDATE campaigns SET info_message = ? WHERE id = ?", (info, campaign.id))
+            return True
+        except Exception:
+            traceback.print_exc()
+            return False
+
+    def set_campaign_field(self, campaign: CampaignInfo, field: str, value: str) -> bool:
+        try:
+            self.bot.db.execute(f"UPDATE campaigns SET {field} = ? WHERE id = ?", (value, campaign.id))
             return True
         except Exception:
             traceback.print_exc()
