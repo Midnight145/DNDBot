@@ -69,12 +69,12 @@ class CampaignSQLHelper:
         try:
             # checks whether we passed ID or name
             if isinstance(campaign, int):
-                resp = self.select_campaign(campaign)
                 self.bot.db.execute(f"DELETE FROM campaigns WHERE id = {campaign}")
-                self.bot.db.execute(f"DROP TABLE {self.__get_table_name(resp['name'])}")
+                self.bot.db.execute(f"DELETE FROM players WHERE campaign = {campaign}")
             else:
+                resp = self.select_campaign(campaign)
                 self.bot.db.execute(f"DELETE FROM campaigns WHERE name LIKE {campaign}")
-                self.bot.db.execute(f"DROP TABLE {self.__get_table_name(campaign)}")
+                self.bot.db.execute(f"DELETE FROM players WHERE campaign = {resp.id}")
             return True
         except Exception:
             traceback.print_exc()
@@ -104,8 +104,8 @@ class CampaignSQLHelper:
 
     def rename_campaign(self, campaign: CampaignInfo, new_name: str):
         try:
-            self.bot.db.execute(f"ALTER TABLE {self.__get_table_name(campaign.name)} RENAME TO "
-                                f"{self.__get_table_name(new_name)}")
+            # self.bot.db.execute(f"ALTER TABLE {self.__get_table_name(campaign.name)} RENAME TO "
+            #                     f"{self.__get_table_name(new_name)}")
             self.bot.db.execute(f"UPDATE campaigns SET name = ? WHERE name LIKE ?", (new_name, campaign.name))
             return True
         except Exception:
@@ -136,13 +136,13 @@ class CampaignSQLHelper:
 
     def add_player(self, campaign: CampaignInfo, player: discord.Member):
         try:
-            is_waitlisted = self.bot.db.execute(f"SELECT waitlisted FROM {self.__get_table_name(campaign.name)} WHERE id = ?", (player.id,)).fetchone()
+            is_waitlisted = self.bot.db.execute(f"SELECT waitlisted FROM players WHERE id = ? AND campaign = ?", (player.id, campaign.id)).fetchone()
             if is_waitlisted:
                 self.__increment_players(campaign, 1)
                 return self.unwaitlist(campaign, player)
             else:
-                self.bot.db.execute(f"INSERT INTO {self.__get_table_name(campaign.name)} (id, waitlisted, name) VALUES ("
-                                    f"?, ?, ?)", (player.id, 0, player.display_name))
+                self.bot.db.execute(f"INSERT INTO players (id, campaign, waitlisted, name) VALUES ("
+                                    f"?, ?, ?, ?)", (player.id, campaign.id, 0, player.display_name))
                 self.__increment_players(campaign, 1)
                 return True
         except Exception:
@@ -151,9 +151,8 @@ class CampaignSQLHelper:
 
     def waitlist_player(self, campaign: CampaignInfo, player: discord.Member):
         try:
-            waitlisted = 1
-            self.bot.db.execute(f"INSERT INTO {self.__get_table_name(campaign.name)} (id, waitlisted, name) VALUES ("
-                                f"?, ?, ?)", (player.id, waitlisted, player.display_name)) 
+            self.bot.db.execute(f"INSERT INTO players (id, campaign, waitlisted, name) VALUES ("
+                                f"?, ?, ?, ?)", (player.id, campaign.id, 1, player.display_name))
             return True
         except Exception:
             traceback.print_exc()
@@ -162,7 +161,7 @@ class CampaignSQLHelper:
     def unwaitlist(self, campaign: CampaignInfo, player: discord.Member):
         try:
             waitlisted = 0
-            self.bot.db.execute(f"UPDATE {self.__get_table_name(campaign.name)} SET waitlisted = ? WHERE id = ?",
+            self.bot.db.execute(f"UPDATE players SET waitlisted = ? WHERE id = ? AND campaign = {campaign.id}",
                                 (waitlisted, player.id))
             self.__increment_players(campaign, 1)
             return True
@@ -172,7 +171,7 @@ class CampaignSQLHelper:
 
     def clear_waitlist(self, campaign: CampaignInfo):
         try:
-            self.bot.db.execute(f"DELETE FROM {self.__get_table_name(campaign.name)} WHERE waitlisted = 1")
+            self.bot.db.execute(f"DELETE FROM players WHERE waitlisted = 1 AND campaign = {campaign.id}")
             return True
         except Exception:
             traceback.print_exc()
@@ -180,7 +179,7 @@ class CampaignSQLHelper:
 
     def remove_player(self, campaign: CampaignInfo, player: Union[discord.Member, FakeMember]):
         try:
-            self.bot.db.execute(f"DELETE FROM {self.__get_table_name(campaign.name)} WHERE id = {player.id}")
+            self.bot.db.execute(f"DELETE FROM players WHERE id = {player.id} AND campaign = {campaign.id}")
             self.__increment_players(campaign, -1)
             return True
         except Exception:
@@ -208,20 +207,7 @@ class CampaignSQLHelper:
     def get_waitlist(self, campaign: CampaignInfo):
         try:
             return self.bot.db.execute("SELECT * FROM "
-                                       f"{self.__get_table_name(campaign.name)} WHERE waitlisted = 1").fetchall()
-        except Exception:
-            traceback.print_exc()
-            return None
-
-    @staticmethod
-    def __get_table_name(campaign_name: str) -> str:
-        return "_" + ''.join([i for i in campaign_name.replace(" ", "_") if i in string.ascii_letters or i == "_" or
-                              i.isdigit()]) + "_players"
-
-    def get_waitlisted_players(self, campaign: CampaignInfo):
-        try:
-            return self.bot.db.execute("SELECT * FROM "
-                                       f"{self.__get_table_name(campaign.name)} WHERE waitlisted = 1").fetchall()
+                                       f"players WHERE waitlisted = 1 AND campaign = {campaign.id}").fetchall()
         except Exception:
             traceback.print_exc()
             return None
@@ -229,7 +215,7 @@ class CampaignSQLHelper:
     def get_players(self, campaign: CampaignInfo):
         try:
             return self.bot.db.execute("SELECT id FROM "
-                                       f"{self.__get_table_name(campaign.name)} WHERE waitlisted = 0").fetchall()
+                                       f"players WHERE waitlisted = 0 AND campaign = {campaign.id}").fetchall()
         except Exception:
             traceback.print_exc()
             return None
