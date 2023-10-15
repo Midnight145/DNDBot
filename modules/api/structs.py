@@ -79,6 +79,15 @@ class CampaignInfo(BaseModel):
 
 
 class CampaignApplication(BaseModel):
+    """
+    Holds the information about a given campaign application
+    :param campaigns: List of campaigns the user is applying to
+    :param first_name: First name of the user
+    :param last_name: Last name of the user
+    :param discord_tag: Discord tag of the user
+    :param discord_id: Discord ID of the user
+    :param unt_email: UNT email of the user
+    """
     campaigns: list[str]
     first_name: str
     last_name: str
