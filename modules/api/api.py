@@ -25,16 +25,27 @@ async def get_campaigns(auth: str, response: Response):
 @router.get("/campaigns/{campaign_id}")
 @permissions(Permissions.CAMPAIGN_READ)
 async def get_campaign(campaign_id: typing.Union[int, str], auth: str, response: Response):
+    try:
+        campaign_id = int(campaign_id)
+    except ValueError:
+        pass
     if isinstance(campaign_id, int):
         resp = DNDBot.instance.db.execute(f"SELECT * FROM campaigns WHERE id = {campaign_id}").fetchone()
     else:
         resp = DNDBot.instance.db.execute(f"SELECT * FROM campaigns WHERE name LIKE ?", (campaign_id,)).fetchone()
+    players = DNDBot.instance.db.execute(f"SELECT * FROM players WHERE campaign = ?", (resp["id"],)).fetchall()
+    resp["players"] = [i["id"] for i in players if i["waitlisted"] == 0]
+    resp["waitlist"] = [i["id"] for i in players if i["waitlisted"] == 1]
     return json.dumps(resp)
 
 
 @router.get("/campaigns/{campaign_id}/players")
 @permissions(Permissions.USER_READ)
 async def get_players(campaign_id: typing.Union[int, str], auth: str, response: Response):
+    try:
+        campaign_id = int(campaign_id)
+    except ValueError:
+        pass
     campaign = DNDBot.instance.CampaignSQLHelper.select_campaign(campaign_id)
     if campaign is None:
         response.status_code = status.HTTP_404_NOT_FOUND

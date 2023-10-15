@@ -11,7 +11,7 @@ def permissions(permissions_value: 'Permissions'):
     def decorator(func):
         @functools.wraps(func)
         async def wrapper_decorator(*args, **kwargs):
-            token = kwargs.get("auth", 0)
+            token = kwargs.get("auth", "")
             permissions_level = check_authorization(token)
             print(token, permissions_level, permissions_value, permissions_level & permissions_value)
             if permissions_level & permissions_value == 0:
@@ -37,8 +37,7 @@ class Permissions(IntEnum):
 
 
 def check_authorization(auth: str) -> int:
-    authorized_users = DNDBot.instance.db.execute("SELECT * FROM authorized_users").fetchall()
-    for user in authorized_users:
-        if user["token"] == auth:
-            return user["permissions"]
+    user = DNDBot.instance.db.execute("SELECT * FROM authorized_users WHERE token=?", (auth,)).fetchone()
+    if user is not None:
+        return user["permissions"]
     return 0
