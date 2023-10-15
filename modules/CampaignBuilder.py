@@ -55,7 +55,7 @@ class CampaignBuilder(commands.Cog):
                       dm: discord.PermissionOverwrite(manage_channels=True, manage_permissions=True,
                                                       send_messages=True, manage_messages=True)
                       }
-
+        await dm.add_roles(role, guild.get_role(812785919727894539))
         # create campaign category and add to CampaignInfo
         category = await guild.create_category(name, overwrites=overwrites)
         retval.category = category.id

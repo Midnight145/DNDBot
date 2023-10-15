@@ -7,6 +7,7 @@ import datetime
 from typing import Union, TYPE_CHECKING
 from .CampaignInfo import CampaignInfo
 from .errorhandler import TracebackHandler
+import shlex
 
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
     from ..DNDBot import DNDBot
@@ -100,19 +101,59 @@ class CampaignManager(commands.Cog):
                 timestamp=datetime.datetime.utcnow()
             )
             embed.add_field(name="DM", value=f"{str(dungeon_master)} ({dungeon_master.id})")
-            embed.add_field(name="Role", value=str(context.guild.get_role(campaign_info["role"])))
-            embed.add_field(name="Category", value=str(context.guild.get_channel(campaign_info["category"]).name))
+            embed.add_field(name="Role", value=str(context.guild.get_role(campaign_info.role)))
+            embed.add_field(name="Category", value=str(context.guild.get_channel(campaign_info.category).name))
             embed.add_field(name="Max Players", value=f"{max_players}")
             await context.send(embed=embed)
 
             self.bot.connection.commit()
-        #    await self.bot.CampaignPlayerManager.update_status(campaign_info)
             await (context.guild.get_channel(self.bot.config["notification_channel"])).send(
                 f"<@&{self.bot.config['new_campaign_role']}>: A new campaign has opened: "
                 f"<#{campaign_info.information_channel}> run by <@{campaign_info.dm}>! "
                 f"Sign up in <#{812549890227437588}>")
+            await self.bot.CampaignPlayerManager.update_status(campaign_info)
         else:
             await context.send("Something went wrong.")
+
+    @commands.command()
+    async def set_campaign_info(self, context: commands.Context, campaign: Union[int, str], *, info: str):
+        """
+        :param context: Command context
+        :param campaign: Either campaign name or campaign ID
+        :param info: The info to set
+        :return: None
+        """
+        if "\n" in info:
+            info.replace("\n", """
+""")
+        campaign = self.CampaignSQLHelper.select_campaign(campaign)
+        commit = self.CampaignSQLHelper.set_campaign_info(campaign, info)
+        if commit:
+            self.bot.connection.commit()
+            # await self.bot.CampaignPlayerManager.update_status(campaign)
+            await context.send("Campaign info set.")
+        else:
+            await context.send("Error setting campaign info")
+
+    @commands.command()
+    async def set_campaign_field(self, context: commands.Context, campaign: Union[int, str], field: str, *, value: str):
+        """
+        :param context: Command context
+        :param campaign: Either campaign name or campaign ID
+        :param field: The field to set
+        :param value: The value to set the field to
+        :return: None
+        """
+        if "\n" in value:
+            value.replace("\n", """
+""")
+        campaign = self.CampaignSQLHelper.select_campaign(campaign)
+        commit = self.CampaignSQLHelper.set_campaign_field(campaign, field, value)
+        if commit:
+            self.bot.connection.commit()
+            await self.bot.CampaignPlayerManager.update_status(campaign)
+        else:
+            await context.send("Error setting campaign field")
 
     @commands.command()
     @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
@@ -317,6 +358,19 @@ class CampaignManager(commands.Cog):
             await i.edit(overwrites=overwrites)
         await context.send(f"Permissions have been fixed for {campaign.name}")
 
+    @commands.command()
+    async def update_campaign(self, context: commands.Context, campaign: int, *, kwargs):
+        campaign = self.CampaignSQLHelper.select_campaign(campaign)
+        args = shlex.split(kwargs)
+        fields = []
+        values = []
+        for arg in args:
+            key, value = arg.split("=")
+            fields.append(key)
+            values.append(value)
+            self.CampaignSQLHelper.set_campaign_field(campaign, key, value)
+        self.bot.connection.commit()
+        await context.send("Campaign updated with\n" + "\n".join([f"{fields[i]}={values[i]}" for i in range(len(fields))]))
 
 
 async def setup(bot):

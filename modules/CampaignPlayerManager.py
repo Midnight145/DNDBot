@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import string
 import traceback
 from typing import Union, TYPE_CHECKING
 
@@ -157,16 +158,18 @@ class CampaignPlayerManager(commands.Cog):
         found_embed = message.embeds[0]
         if found_embed is None:
             return
+        if "Website" in found_embed.title:
+            text_check = "campaign"
+        else:
+            text_check = "which of the following"
         campaigns = []
         name = found_embed.fields[0].value + " " + found_embed.fields[1].value
         member = await message.guild.fetch_member(int(found_embed.fields[2].value))
         channel = message.guild.get_channel(self.bot.config["applications_channel"])
-        for i in found_embed.fields[1::]:
-            if "which of the following" not in i.name.lower():
+        for i in found_embed.fields:
+            if text_check not in i.name.lower():
                 continue
             campaign_name = i.value
-            if "(waitlist)" in i.value:
-                campaign_name = i.value[:-11]
             try:
                 campaigns.append(self.bot.CampaignSQLHelper.select_campaign(campaign_name))
             except AttributeError:
@@ -206,7 +209,7 @@ class CampaignPlayerManager(commands.Cog):
     @commands.command()
     async def show_waitlisted_players(self, context: commands.Context, campaign_id: Union[int, str]):
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_id)
-        resp = self.bot.CampaignSQLHelper.get_waitlisted_players(campaign)
+        resp = self.bot.CampaignSQLHelper.get_waitlist(campaign)
         # sort resp by pid
         resp.sort(key=lambda x: x["pid"])
         waitlisted_players = [context.guild.get_member(i["id"]) for i in resp]
@@ -406,7 +409,7 @@ class CampaignPlayerManager(commands.Cog):
     @commands.command()
     async def handle_waitlist(self, context: commands.Context, campaign: Union[int, str]):
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign)
-        if context.author.id != campaign.dm:
+        if context.author.id != campaign.dm and not context.author.guild_permissions.administrator:
             await context.send("You are not the DM of this campaign.")
             return
         waitlisted_players = self.bot.CampaignSQLHelper.get_waitlist(campaign)
