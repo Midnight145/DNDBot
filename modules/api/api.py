@@ -94,3 +94,47 @@ async def apply_to_campaigns(auth: str, application: CampaignApplication, respon
     await channel.send(embed=embed)
 
     return json.dumps({"success": True})
+
+
+@router.get("/users/{user_id}")
+@permissions(Permissions.USER_READ)
+async def get_user(user_id: int, auth: str, response: Response):
+    global guild
+    if guild is None:
+        guild = DNDBot.instance.get_guild(DNDBot.instance.config["server"])
+    user = guild.get_member(user_id)
+    if user is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        user = DNDBot.instance.get_user(user_id)
+        if user is None:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return json.dumps({"error": "User not found"})
+        resp = {"id": user.id, "name": user.name, "discriminator": user.discriminator, "nickname": user.display_name,
+                "in_discord": False, "officer": False, "developer": False, "verified": False, "guest": False,
+                "player": False, "dm": False, "banned_player": False, "banned_dm": False, "joined": "",
+                "campaigns_player": [], "campaigns_dm": []}
+        return json.dumps(resp)
+
+    officer_role = guild.get_role(DNDBot.instance.config["officer_role"])
+    developer_role = guild.get_role(DNDBot.instance.config["developer_role"])
+    verified_role = guild.get_role(DNDBot.instance.config["verified_role"])
+    guest_role = guild.get_role(DNDBot.instance.config["guest_role"])
+    player_role = guild.get_role(DNDBot.instance.config["member_role"])
+    dm_role = guild.get_role(DNDBot.instance.config["dm_role"])
+    banned_player_role = guild.get_role(DNDBot.instance.config["banned_player_role"])
+    banned_dm_role = guild.get_role(DNDBot.instance.config["banned_dm_role"])
+
+    resp = {"id": user.id, "name": user.name, "discriminator": user.discriminator, "nickname": user.display_name,
+            "in_discord": True, "officer": officer_role in user.roles, "developer": developer_role in user.roles,
+            "verified": verified_role in user.roles, "guest": guest_role in user.roles,
+            "player": player_role in user.roles, "dm": dm_role in user.roles,
+            "banned_player": banned_player_role in user.roles, "banned_dm": banned_dm_role in user.roles,
+            "joined": user.joined_at.isoformat(), "campaigns_player": [], "campaigns_dm": []}
+
+    res = DNDBot.instance.db.execute("select * from campaigns where dm = ?", (user.id,)).fetchall()
+    for i in res:
+        resp["campaigns_dm"].append(i["id"])
+    res = DNDBot.instance.db.execute("select * from players where id = ? and waitlisted = 0", (user.id,)).fetchall()
+    for i in res:
+        resp["campaigns_player"].append(i["campaign"])
+    return json.dumps(resp)
