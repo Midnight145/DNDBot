@@ -24,6 +24,7 @@ class CampaignInfo:
     :param playstyle: The campaign's playstyle
     :param session_length: The campaign's session length
     :param meeting_frequency: The campaign's meeting frequency
+    :param meeting_date: The campaign's meeting date
     :param meeting_time: The campaign's meeting time
     :param system: The campaign's system
     :param new_player_friendly: Whether the campaign is new player friendly
@@ -50,6 +51,7 @@ class CampaignInfo:
     playstyle: str = ""
     session_length: str = ""
     meeting_frequency: str = ""
+    meeting_date: str = ""
     meeting_time: str = ""
     system: str = ""
     new_player_friendly: int = 0

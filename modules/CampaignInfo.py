@@ -44,6 +44,7 @@ class CampaignInfo:
     playstyle: str = ""
     session_length: str = ""
     meeting_frequency: str = ""
+    meeting_day: str = ""
     meeting_time: str = ""
     system: str = ""
     new_player_friendly: int = 0
