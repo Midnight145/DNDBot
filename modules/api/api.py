@@ -18,7 +18,13 @@ guild = None
 @router.get("/campaigns")
 @permissions(Permissions.CAMPAIGN_READ)
 async def get_campaigns(auth: str, response: Response):
+    global guild
     campaigns = DNDBot.instance.CampaignSQLHelper.get_campaigns()
+    if guild is None:
+        guild = DNDBot.instance.get_guild(DNDBot.instance.config["server"])
+    for i in campaigns:
+        i["dm_username"] = guild.get_member(i["dm"]).name
+        i["dm_nickname"] = guild.get_member(i["dm"]).display_name
     return json.dumps(campaigns)
 
 
