@@ -25,6 +25,7 @@ class CampaignInfo:
     :param meeting_time: The campaign's meeting time
     :param system: The campaign's system
     :param new_player_friendly: Whether the campaign is new player friendly
+    :param timestamp: When the campaign was created
     """
 
     name: str = ""
@@ -46,3 +47,4 @@ class CampaignInfo:
     meeting_time: str = ""
     system: str = ""
     new_player_friendly: int = 0
+    timestamp: int = 0

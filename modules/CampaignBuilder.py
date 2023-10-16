@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands
 
 from modules import CampaignInfo
+import time
 
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
     from ..DNDBot import DNDBot
@@ -43,6 +44,7 @@ class CampaignBuilder(commands.Cog):
         retval.location = location
         retval.playstyle = playstyle
         retval.info_message = info_message
+        retval.timestamp = int(time.time())
 
         # create campaign role
         role = await guild.create_role(reason="new campaign", name=name, mentionable=True)

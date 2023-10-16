@@ -11,6 +11,8 @@ class CampaignInfo:
     :param category: The campaign's category channel
     :param information_channel: The "global" information channel
     :param dm: Dungeon master
+    :param dm_username: The DM's username
+    :param dm_nickname: The DM's nickname
     :param min_players: Minimum players required
     :param max_players: Maximum players allowed
     :param current_players: Current players
@@ -25,6 +27,7 @@ class CampaignInfo:
     :param meeting_time: The campaign's meeting time
     :param system: The campaign's system
     :param new_player_friendly: Whether the campaign is new player friendly
+    :param timestamp: When the campaign was created
     :param players: List of players
     :param waitlist: List of waitlisted players
     """
@@ -50,6 +53,7 @@ class CampaignInfo:
     meeting_time: str = ""
     system: str = ""
     new_player_friendly: int = 0
+    timestamp: int = 0
     players: list[int] = None
     waitlist: list[int] = None
 
