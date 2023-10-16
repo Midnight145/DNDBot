@@ -25,6 +25,7 @@ async def get_campaigns(auth: str, response: Response):
 @router.get("/campaigns/{campaign_id}")
 @permissions(Permissions.CAMPAIGN_READ)
 async def get_campaign(campaign_id: typing.Union[int, str], auth: str, response: Response):
+    global guild
     try:
         campaign_id = int(campaign_id)
     except ValueError:
@@ -36,6 +37,10 @@ async def get_campaign(campaign_id: typing.Union[int, str], auth: str, response:
     players = DNDBot.instance.db.execute(f"SELECT * FROM players WHERE campaign = ?", (resp["id"],)).fetchall()
     resp["players"] = [i["id"] for i in players if i["waitlisted"] == 0]
     resp["waitlist"] = [i["id"] for i in players if i["waitlisted"] == 1]
+    if guild is None:
+        guild = DNDBot.instance.get_guild(DNDBot.instance.config["server"])
+    resp["dm_username"] = guild.get_member(resp["dm"]).name
+    resp["dm_nickname"] = guild.get_member(resp["dm"]).display_name
     return json.dumps(resp)
 
 

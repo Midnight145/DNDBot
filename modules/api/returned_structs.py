@@ -34,6 +34,8 @@ class CampaignInfo:
     category: int = 0
     information_channel: int = 0
     dm: int = 0
+    dm_username: str = ""
+    dm_nickname: str = ""
     min_players: int = 0
     max_players: int = 0
     current_players: int = 0
