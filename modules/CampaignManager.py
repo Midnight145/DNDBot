@@ -90,8 +90,11 @@ class CampaignManager(commands.Cog):
         :return: None
         """
 
-        campaign_info = await self.CampaignBuilder.create_campaign(context.guild, name, dungeon_master, min_players,
-                                                                   max_players, location, playstyle)
+        campaign_info = await self.CampaignBuilder.create_campaign(context.guild, name, dungeon_master)
+        campaign_info.min_players = min_players
+        campaign_info.max_players = max_players
+        campaign_info.location = location
+        campaign_info.playstyle = playstyle
 
         commit = self.CampaignSQLHelper.create_campaign(campaign_info)
         if commit:
@@ -110,7 +113,7 @@ class CampaignManager(commands.Cog):
             await (context.guild.get_channel(self.bot.config["notification_channel"])).send(
                 f"<@&{self.bot.config['new_campaign_role']}>: A new campaign has opened: "
                 f"<#{campaign_info.information_channel}> run by <@{campaign_info.dm}>! "
-                f"Sign up in <#{812549890227437588}>")
+                f"Apply to join here: <https://www.untcriticalhit.org/apply/{campaign_info.id}>")
             await self.bot.CampaignPlayerManager.update_status(campaign_info)
         else:
             await context.send("Something went wrong.")
@@ -362,9 +365,11 @@ class CampaignManager(commands.Cog):
     async def update_campaign(self, context: commands.Context, campaign: int, *, kwargs):
         campaign = self.CampaignSQLHelper.select_campaign(campaign)
         args = shlex.split(kwargs)
+        print(args)
         fields = []
         values = []
         for arg in args:
+            print(arg)
             key, value = arg.split("=")
             fields.append(key)
             values.append(value)

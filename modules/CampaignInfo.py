@@ -46,6 +46,7 @@ class CampaignInfo:
     meeting_frequency: str = ""
     meeting_day: str = ""
     meeting_time: str = ""
+    meeting_date: str = ""
     system: str = ""
     new_player_friendly: int = 0
     timestamp: int = 0

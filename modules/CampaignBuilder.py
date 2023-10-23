@@ -18,8 +18,7 @@ class CampaignBuilder(commands.Cog):
     def __init__(self, bot: 'DNDBot'):
         self.bot = bot
 
-    async def create_campaign(self, guild: discord.Guild, name: str, dm: discord.Member,
-                              min_players: int, max_players: int, location: str, playstyle: str, info_message: str = "") -> CampaignInfo:
+    async def create_campaign(self, guild: discord.Guild, name: str, dm: discord.Member) -> CampaignInfo:
         """
         Creates all the necessary channels when creating a new campaign
         :param guild: Guild to create campaign in
@@ -35,15 +34,10 @@ class CampaignBuilder(commands.Cog):
 
         # return value
         retval = CampaignInfo()
-        retval.min_players = min_players
-        retval.max_players = max_players
         retval.name = name
         retval.current_players = 0
         retval.dm = dm.id
         retval.locked = 0
-        retval.location = location
-        retval.playstyle = playstyle
-        retval.info_message = info_message
         retval.timestamp = int(time.time())
 
         # create campaign role

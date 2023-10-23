@@ -107,7 +107,7 @@ class CampaignPlayerManager(commands.Cog):
             campaign_roles = self.bot.CampaignSQLHelper.select_field("role")
             guest = True
             for campaign_ in campaign_roles:
-                if any(role.id == campaign_[0] for role in member.roles):
+                if any(role.id == campaign_["role"] for role in member.roles):
                     guest = False
 
             if guest:
@@ -159,7 +159,8 @@ class CampaignPlayerManager(commands.Cog):
         if found_embed is None:
             return
         if "Website" in found_embed.title:
-            text_check = "campaign"
+            return
+            # text_check = "campaign"
         else:
             text_check = "which of the following"
         campaigns = []
@@ -251,7 +252,7 @@ class CampaignPlayerManager(commands.Cog):
 
     @commands.command()
     async def mass_update(self, context):
-        campaigns = [i[0] for i in self.bot.db.execute("SELECT id FROM campaigns").fetchall()]
+        campaigns = [i["id"] for i in self.bot.db.execute("SELECT id FROM campaigns").fetchall()]
         for i in campaigns:
             await self.bot.CampaignPlayerManager.update_status(self.bot.CampaignSQLHelper.select_campaign(i))
             await asyncio.sleep(1)
@@ -318,7 +319,7 @@ class CampaignPlayerManager(commands.Cog):
 
             return embed
 
-        campaigns = [i[0] for i in self.bot.db.execute("SELECT id FROM campaigns").fetchall()]
+        campaigns = [i["id"] for i in self.bot.db.execute("SELECT id FROM campaigns").fetchall()]
         for i in campaigns:
             message = await context.guild.get_channel(self.bot.config["status_channel"]).send(
                 embed=(await create_status_message(self.bot.CampaignSQLHelper.select_campaign(i))))
@@ -331,7 +332,7 @@ class CampaignPlayerManager(commands.Cog):
         # get message status channel
         channel = self.bot.get_channel(self.bot.config["status_channel"])
         # get all campaigns
-        campaigns = [i[0] for i in self.bot.db.execute("SELECT id FROM campaigns").fetchall()]
+        campaigns = [i["id"] for i in self.bot.db.execute("SELECT id FROM campaigns").fetchall()]
         # for each campaign
         for i in campaigns:
             # get the campaign
