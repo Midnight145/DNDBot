@@ -1,5 +1,6 @@
 import datetime
 import re
+from enum import Enum, IntEnum
 from typing import TYPE_CHECKING
 
 import discord
@@ -23,6 +24,47 @@ class CampaignReactionHandler(commands.Cog):
         :param payload: Payload from reaction add event
         :return: None
         """
+
+        class FieldValuesWebsite(IntEnum):
+            first_name = 0
+            last_name = 1
+            unt_email = 2
+            discord_tag = 3
+            discord_id = 4
+            dm_experience = 5
+            playstyle = 6
+            campaign_name = 7
+            info_message = 8
+            system = 9
+            location = 10
+            meeting_frequency = 11
+            meeting_day = 12
+            meeting_time = 13
+            session_length = 14
+            min_players = 15
+            max_players = 16
+            new_player_friendly = 17
+
+        class FieldValues(IntEnum):
+            first_name = 0
+            last_name = 1
+            discord_username = 2
+            unt_email = 3
+            meeting_day = 4
+            meeting_time = 5
+            location = 6
+            meeting_frequency = 7
+            system = 8
+            campaign_name = 9
+            info_message = 10
+            dm_experience = 11
+            playstyle = 12
+            new_player_friendly = 13
+            session_length = 14
+            min_players = 15
+            max_players = 16
+
+
         if payload.user_id == self.bot.user.id:
             return
         channel: discord.TextChannel = self.bot.get_channel(payload.channel_id)  # queuing bot for text channel
@@ -58,6 +100,74 @@ class CampaignReactionHandler(commands.Cog):
 
             elif payload.emoji.name == "❌":
                 await self.deny_player(message, member, payload.member)
+
+        if channel.id == self.bot.config["dm_receipts"]:
+            print("Parsing new DM receipt")
+            roles = [self.bot.config["admin_role"], self.bot.config["developer_role"]]
+            if not any(role in [role.id for role in payload.member.roles] for role in roles):
+                print("User is not an admin or developer")
+                return
+            if not message.embeds:
+                print("No embeds found")
+                return
+            embed = message.embeds[0]
+            if payload.emoji.name == "✅":
+                print("DM receipt approved")
+                if "website" in embed.title.lower():
+                    print("Website application detected")
+                    dm = channel.guild.get_member(int(embed.fields[FieldValuesWebsite.discord_id].value))
+                    campaign_info = await self.bot.CampaignBuilder.create_campaign(
+                        channel.guild, embed.fields[FieldValuesWebsite.campaign_name].value, dm)
+
+                    campaign_info.min_players = int(embed.fields[FieldValuesWebsite.min_players].value)
+                    campaign_info.max_players = int(embed.fields[FieldValuesWebsite.max_players].value)
+                    campaign_info.location = embed.fields[FieldValuesWebsite.location].value
+                    campaign_info.playstyle = embed.fields[FieldValuesWebsite.playstyle].value
+                    campaign_info.info_message = embed.fields[FieldValuesWebsite.info_message].value
+                    campaign_info.system = embed.fields[FieldValuesWebsite.system].value
+                    campaign_info.meeting_frequency = embed.fields[FieldValuesWebsite.meeting_frequency].value
+                    if "Day" in embed.fields[FieldValuesWebsite.meeting_day].value:
+                        campaign_info.meeting_day = embed.fields[FieldValuesWebsite.meeting_day].value
+                        campaign_info.meeting_date = ""
+                    else:
+                        campaign_info.meeting_day = ""
+                        campaign_info.meeting_date = embed.fields[FieldValuesWebsite.meeting_day].value
+                    campaign_info.meeting_time = embed.fields[FieldValuesWebsite.meeting_time].value
+                    campaign_info.session_length = embed.fields[FieldValuesWebsite.session_length].value
+                    campaign_info.new_player_friendly = embed.fields[FieldValuesWebsite.new_player_friendly].value
+                else:
+                    dm = channel.guild.get_member_named(embed.fields[FieldValues.discord_username].value)
+                    campaign_info = await self.bot.CampaignBuilder.create_campaign(
+                        channel.guild, embed.fields[FieldValues.campaign_name].value, dm)
+
+                    campaign_info.min_players = int(embed.fields[FieldValues.min_players].value)
+                    campaign_info.max_players = int(embed.fields[FieldValues.max_players].value)
+                    campaign_info.location = embed.fields[FieldValues.location].value
+                    campaign_info.playstyle = embed.fields[FieldValues.playstyle].value
+                    campaign_info.info_message = embed.fields[FieldValues.info_message].value
+                    campaign_info.system = embed.fields[FieldValues.system].value
+                    campaign_info.meeting_frequency = embed.fields[FieldValues.meeting_frequency].value
+                    if "Day" in embed.fields[FieldValues.meeting_day].value:
+                        campaign_info.meeting_day = embed.fields[FieldValues.meeting_day].value
+                        campaign_info.meeting_date = ""
+                    else:
+                        campaign_info.meeting_day = ""
+                        campaign_info.meeting_date = embed.fields[FieldValues.meeting_day].value
+                    campaign_info.meeting_time = embed.fields[FieldValues.meeting_time].value
+                    campaign_info.session_length = embed.fields[FieldValues.session_length].value
+                    campaign_info.new_player_friendly = embed.fields[FieldValues.new_player_friendly].value
+
+                commit = self.bot.CampaignSQLHelper.create_campaign(campaign_info)
+                if commit:
+                    self.bot.connection.commit()
+                    await message.delete()
+                    await channel.send(f"Campaign {campaign_info.name} has been created!")
+                else:
+                    await channel.send("An unknown error occurred while creating the campaign.")
+
+            elif payload.emoji.name == "❌":
+                print("DM receipt denied")
+                await message.delete()
 
     async def verify(self, member: discord.Member) -> bool:
         """
@@ -169,6 +279,7 @@ class CampaignReactionHandler(commands.Cog):
         :param payload: Reaction payload
         :return: None
         """
+
         async def unwaitlist_apply():
             embed_ = await self.__create_waitlist_embed(member, campaign)
             dm = await member.guild.fetch_member(campaign.dm)
@@ -198,7 +309,8 @@ class CampaignReactionHandler(commands.Cog):
                 member = await message.guild.fetch_member(waitlisted_players[0]['id'])
                 await unwaitlist_apply()
 
-    async def approve_waitlisted_player(self, message: discord.Message, member: discord.Member, reactor: discord.Member):
+    async def approve_waitlisted_player(self, message: discord.Message, member: discord.Member,
+                                        reactor: discord.Member):
         """
         :param message: Message retrieved from reaction payload
         :param member: Member to approve
@@ -232,8 +344,8 @@ class CampaignReactionHandler(commands.Cog):
         else:
             await message.channel.send("An unknown error occurred.")
             return
-        #await message.clear_reaction("✅")
-        #await message.clear_reaction("❌")
+        # await message.clear_reaction("✅")
+        # await message.clear_reaction("❌")
         await self.bot.CampaignPlayerManager.update_status(campaign)
 
     async def deny_waitlisted_player(self, message: discord.Message, member: discord.Member, reactor: discord.Member):
