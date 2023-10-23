@@ -3,6 +3,15 @@ import typing
 from pydantic import BaseModel
 
 
+class DMInfo(BaseModel):
+    first_name: str
+    last_name: str
+    discord_tag: str
+    discord_id: int
+    unt_email: typing.Optional[str]
+    dm_experience: str
+
+
 class PartialCampaignInfo(BaseModel):
     """
     Class that holds all basic information about a given campaign
@@ -16,11 +25,13 @@ class PartialCampaignInfo(BaseModel):
     :param session_length: The campaign's session length
     :param meeting_frequency: The campaign's meeting frequency
     :param meeting_time: The campaign's meeting time
+    :param meeting_day: The campaign's meeting day. Can be None if campaign is a one-shot
+    :param meeting_date: The campaign's meeting date. Will only be used if campaign is a one-shot
     :param system: The campaign's system
     :param new_player_friendly: Whether the campaign is new player friendly
     """
     name: str
-    dm: int
+    dm: DMInfo
     min_players: int
     max_players: int
     info_message: str
@@ -29,8 +40,10 @@ class PartialCampaignInfo(BaseModel):
     session_length: str
     meeting_frequency: str
     meeting_time: str
+    meeting_day: typing.Optional[str]
+    meeting_date: typing.Optional[str]
     system: str
-    new_player_friendly: int
+    new_player_friendly: typing.Literal["Yes", "No"]
 
 
 class CampaignInfo(BaseModel):
@@ -75,7 +88,7 @@ class CampaignInfo(BaseModel):
     meeting_frequency: str
     meeting_time: str
     system: str
-    new_player_friendly: int
+    new_player_friendly: typing.Literal["Yes", "No"]
 
 
 class CampaignApplication(BaseModel):
@@ -94,3 +107,14 @@ class CampaignApplication(BaseModel):
     discord_tag: str
     discord_id: int
     unt_email: typing.Optional[str]
+
+
+class CampaignActionRequest(BaseModel):
+    first_name: str
+    last_name: str
+    discord_tag: str
+    campaign_name: str
+    action: str
+    reasons: typing.Optional[list[str]]
+    elaboration: typing.Optional[str]
+    new_player_count: typing.Optional[int]

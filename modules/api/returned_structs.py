@@ -24,8 +24,9 @@ class CampaignInfo:
     :param playstyle: The campaign's playstyle
     :param session_length: The campaign's session length
     :param meeting_frequency: The campaign's meeting frequency
-    :param meeting_date: The campaign's meeting date
+    :param meeting_day: The campaign's meeting day, used for recurring campaigns
     :param meeting_time: The campaign's meeting time
+    :param meeting_date: The campaign's meeting date, used for one-shot campaigns
     :param system: The campaign's system
     :param new_player_friendly: Whether the campaign is new player friendly
     :param timestamp: When the campaign was created
@@ -51,8 +52,9 @@ class CampaignInfo:
     playstyle: str = ""
     session_length: str = ""
     meeting_frequency: str = ""
-    meeting_date: str = ""
+    meeting_day: str = ""
     meeting_time: str = ""
+    meeting_date: str = ""
     system: str = ""
     new_player_friendly: int = 0
     timestamp: int = 0
@@ -79,6 +81,7 @@ class UserInfo:
     :param joined: When the user joined
     :param campaigns_player: List of campaigns the user is a player in
     :param campaigns_dm: List of campaigns the user is a DM in
+    :param warnings: List of warnings. Keys are the warning IDs, values are the warning reasons
     """
     id: int = 0
     name: str = ""
@@ -95,6 +98,7 @@ class UserInfo:
     joined: str = ""
     campaigns_player: list[int] = None
     campaigns_dm: list[int] = None
+    warnings: dict[str, str] = None  # json doesn't support int keys, so you have to typecast to int before use
 
 
 def generate_struct(dict_: dict, cls: type):
