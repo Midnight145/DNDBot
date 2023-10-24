@@ -176,8 +176,9 @@ class CampaignManager(commands.Cog):
         commit2 = await self.CampaignBuilder.delete_campaign(resp)
 
         status_channel = context.guild.get_channel(self.bot.config["status_channel"])
-        status_message = await status_channel.fetch_message(resp.status_message)
-        await status_message.delete()
+        if resp.status_message != 0:
+            status_message = await status_channel.fetch_message(resp.status_message)
+            await status_message.delete()
 
         if commit:
             await context.send(f"Campaign \"{resp.name}\" deleted.")

@@ -223,6 +223,8 @@ class CampaignPlayerManager(commands.Cog):
         await context.send(embed=embed)
 
     async def update_status(self, campaign: CampaignInfo):
+        if campaign.status_message == 0 or campaign.information_channel == 0:
+            return
         message_text = f"Status: {campaign.current_players} out of {campaign.max_players} seats filled.\nLocked: {'Yes' if campaign.locked else 'No'}"
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign.name)
         info_channel: discord.TextChannel = self.bot.get_channel(campaign.information_channel)
@@ -274,6 +276,8 @@ class CampaignPlayerManager(commands.Cog):
         return embed
 
     async def update_status_embed(self, campaign: CampaignInfo):
+        if campaign.status_message == 0:
+            return
         channel = self.bot.get_channel(self.bot.config["status_channel"])
         message = None
         try:
