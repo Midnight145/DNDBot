@@ -29,7 +29,6 @@ async def get_campaigns(auth: str, response: Response):
         players = DNDBot.instance.db.execute(f"SELECT * FROM players WHERE campaign = ?", (val["id"],)).fetchall()
         val["players"] = [i["id"] for i in players if i["waitlisted"] == 0]
         val["waitlist"] = [i["id"] for i in players if i["waitlisted"] == 1]
-        val["new_player_friendly"] = "Yes" if val["new_player_friendly"] == 1 else "No"
     return json.dumps(campaigns)
 
 
@@ -52,7 +51,7 @@ async def get_campaign(campaign_id: typing.Union[int, str], auth: str, response:
         guild = DNDBot.instance.get_guild(DNDBot.instance.config["server"])
     resp["dm_username"] = guild.get_member(resp["dm"]).name
     resp["dm_nickname"] = guild.get_member(resp["dm"]).display_name
-    resp["new_player_friendly"] = "Yes" if resp["new_player_friendly"] == 1 else "No"
+    resp["new_player_friendly"] = resp["new_player_friendly"]
     return json.dumps(resp)
 
 
