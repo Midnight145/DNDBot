@@ -113,7 +113,7 @@ class CampaignManager(commands.Cog):
             await (context.guild.get_channel(self.bot.config["notification_channel"])).send(
                 f"<@&{self.bot.config['new_campaign_role']}>: A new campaign has opened: "
                 f"<#{campaign_info.information_channel}> run by <@{campaign_info.dm}>! "
-                f"Apply to join here: <https://www.untcriticalhit.org/apply/{campaign_info.id}>")
+                f"Sign up in <#{812549890227437588}>")
             await self.bot.CampaignPlayerManager.update_status(campaign_info)
         else:
             await context.send("Something went wrong.")

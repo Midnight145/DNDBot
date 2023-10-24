@@ -71,33 +71,17 @@ async def get_players(campaign_id: typing.Union[int, str], auth: str, response: 
     return json.dumps(resp)
 
 
-def log(func):
-    async def wrapper(*args, **kwargs):
-        print(f"API: {func.__name__} called")
-        # get partialcampaigninfo obj
-        print(args, kwargs)
-        val = args[1]
-        print(val)
-        print(val.__dict__)
-        return await func(*args, **kwargs)
-
-    return wrapper
-
-
 @router.post("/campaigns/create")
 @permissions(Permissions.CAMPAIGN_CREATE)
 async def create_campaign(auth: str, campaign: PartialCampaignInfo, response: Response):
-    print(campaign)
-    print(campaign.__dict__)
     global guild
     if guild is None:
         guild = DNDBot.instance.get_guild(DNDBot.instance.config["server"])
-    # campaign.dm = guild.get_member(campaign.dm.discord_id)
     if not campaign.meeting_date and not campaign.meeting_day:
         response.status_code = status.HTTP_400_BAD_REQUEST
         return json.dumps({"error": "Meeting date or day must be specified"})
     embed = discord.Embed(
-        title="New Campaign Sign-Up!",
+        title="New Campaign Sign-Up! (Website)",
     )
     embed.add_field(name="First Name", value=campaign.dm.first_name, inline=True)
     embed.add_field(name="Last Name", value=campaign.dm.last_name, inline=True)
@@ -256,3 +240,30 @@ async def get_user_warnings(user_id: int, auth: str, response: Response):
     warns = DNDBot.instance.db.execute("select * from warns where member = ?", (user_id,)).fetchall()
     resp = [{i["id"]: i["reason"]} for i in warns]
     return json.dumps(resp)
+
+
+# async def campaign_creation_callback(instance: DNDBot, campaign_info: CampaignInfo):
+async def campaign_creation_callback(*args, campaign_info=None):
+    global guild
+    if guild is None:
+        guild = DNDBot.instance.get_guild(DNDBot.instance.config["server"])
+    name = campaign_info.name
+    dungeon_master = guild.get_member(campaign_info.dm)
+    embed = discord.Embed(
+        title="Campaign Created",
+        description=f"Campaign {name} created.",
+        timestamp=datetime.datetime.utcnow()
+    )
+    receipts = guild.get_channel(DNDBot.instance.config["dm_receipts"])
+    embed.add_field(name="DM", value=f"{str(dungeon_master)} ({dungeon_master.id})")
+    embed.add_field(name="Role", value=str(guild.get_role(campaign_info.role)))
+    embed.add_field(name="Category", value=str(guild.get_channel(campaign_info.category).name))
+    embed.add_field(name="Max Players", value=f"{campaign_info.max_players}")
+    await receipts.send(embed=embed)
+
+    DNDBot.instance.connection.commit()
+    await (guild.get_channel(DNDBot.instance.config["notification_channel"])).send(
+        f"<@&{DNDBot.instance.config['new_campaign_role']}>: A new campaign has opened: "
+        f"<#{campaign_info.information_channel}> run by <@{campaign_info.dm}>! "
+        f"Apply to join here: <https://www.untcriticalhit.org/apply/{campaign_info.id}>")
+    await DNDBot.instance.CampaignPlayerManager.update_status(campaign_info)

@@ -9,6 +9,7 @@ from modules import CampaignBuilder, CampaignSQLHelper, CampaignPlayerManager
 class DNDBot(commands.Bot):
     instance: 'DNDBot' = None
 
+
     def __init__(self, db: sqlite3.Cursor, connection: sqlite3.Connection, config: dict, **kwargs):
         super().__init__(**kwargs)
         self.db = db
@@ -24,3 +25,6 @@ class DNDBot(commands.Bot):
         self.CampaignBuilder = CampaignBuilder(self)
         self.CampaignSQLHelper = CampaignSQLHelper(self)
         self.CampaignPlayerManager: CampaignPlayerManager = None
+        self.campaign_creation_callback: callable = None
+
+

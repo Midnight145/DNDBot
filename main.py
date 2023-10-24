@@ -86,6 +86,10 @@ async def on_error(event, *args, **kwargs):
     await channel.send(f"An error occurred in {event}. Error code: {str(err_code)}")
 
 
+# todo: do this better, this is a mess
+DNDBot.instance.campaign_creation_callback = api.campaign_creation_callback
+
+
 async def start():
     try:
         await bot.start(TOKEN)

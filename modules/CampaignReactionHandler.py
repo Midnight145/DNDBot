@@ -8,6 +8,7 @@ from discord.ext import commands
 
 from . import CampaignInfo
 from .CampaignBuilder import verification_denied
+from .api import api
 
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
     from ..DNDBot import DNDBot
@@ -113,9 +114,14 @@ class CampaignReactionHandler(commands.Cog):
             embed = message.embeds[0]
             if payload.emoji.name == "✅":
                 print("DM receipt approved")
+                website = False
                 if "website" in embed.title.lower():
                     print("Website application detected")
+                    website = True
+                if website:
+                    print(embed.fields[FieldValuesWebsite.discord_id].value)
                     dm = channel.guild.get_member(int(embed.fields[FieldValuesWebsite.discord_id].value))
+                    print(dm)
                     campaign_info = await self.bot.CampaignBuilder.create_campaign(
                         channel.guild, embed.fields[FieldValuesWebsite.campaign_name].value, dm)
 
@@ -162,6 +168,9 @@ class CampaignReactionHandler(commands.Cog):
                     self.bot.connection.commit()
                     await message.delete()
                     await channel.send(f"Campaign {campaign_info.name} has been created!")
+                    if website:
+                        await self.bot.campaign_creation_callback(campaign_info=campaign_info)
+                        return
                 else:
                     await channel.send("An unknown error occurred while creating the campaign.")
 
