@@ -1,5 +1,6 @@
 import datetime
 import os
+import random
 
 from discord.ext import commands
 import discord
@@ -22,6 +23,34 @@ class Utilities(commands.Cog):
         self.bot.update_config = update_config
 
     BOT_PREFIX = '='
+
+    @commands.command()
+    async def rps(self, context: commands.Context, choice: str):
+        if context.channel.id != 1166597437448794183:
+            return
+        choice = choice.lower()
+        choices = ["rock", "paper", "scissors"]
+        if choice not in choices:
+            await context.send("Invalid choice! Choices are: " + ", ".join(choices))
+            return
+        is_kyle = context.author.id == 833818305915387936
+        if is_kyle:
+            to_remove = choices.index(choice) - 1
+            del choices[to_remove]  # remove the choice before the choice
+        else:
+            to_remove = choices.index(choice) + 1
+            del choices[to_remove % 3]  # remove the choice after the choice
+        bot_choice = random.choice(choices)
+        if choice == bot_choice:
+            await context.send(f"Draw! I chose {bot_choice}")
+        elif choice == "rock" and bot_choice == "scissors":
+            await context.send(f"You win! I chose {bot_choice}")
+        elif choice == "paper" and bot_choice == "rock":
+            await context.send(f"You win! I chose {bot_choice}")
+        elif choice == "scissors" and bot_choice == "paper":
+            await context.send(f"You win! I chose {bot_choice}")
+        else:
+            await context.send(f"You lose! I chose {bot_choice}")
 
     @commands.command()
     @commands.is_owner()

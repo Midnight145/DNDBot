@@ -44,11 +44,21 @@ class Listeners(commands.Cog):
                     if channel.name == "lobby":
                         await channel.send(f"{after.mention} has joined the campaign!")
 
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if "crazy" in message.content.lower() and not message.author.bot and message.channel.id == 809567702062333967:
+            await message.channel.send("crazy?")
+            return
+        if ("kyle" in message.content.lower() or "833818305915387936" in message.content.lower()) and not message.author.bot and message.channel.id == 809567702062333967:
+            await message.channel.send("kyle can't win at rock paper scissors")
+            return
+        if "kfc" in message.content.lower() and not message.author.bot and message.channel.id == 809567702062333967:
+            await message.channel.send("only $5????")
+            return
+        if "based" in message.content.lower() and not message.author.bot and message.channel.id == 809567702062333967:
+            await message.channel.send("based on what?")
+            return
 
-#    @commands.Cog.listener()
-#    async def on_message(self, message):
-#        if "bee" in message.content.lower() and not message.author.bot and message.channel.id == 809567702062333967:
-#            await message.channel.send("bees are insects AND animals")
 
 async def setup(bot):
     await bot.add_cog(Listeners(bot))
