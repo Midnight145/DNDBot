@@ -1,14 +1,12 @@
-import importlib
-
-import discord
-from discord.ext import commands
 import sqlite3
+
+from discord.ext import commands
+
 from modules import CampaignBuilder, CampaignSQLHelper, CampaignPlayerManager
 
 
 class DNDBot(commands.Bot):
     instance: 'DNDBot' = None
-
 
     def __init__(self, db: sqlite3.Cursor, connection: sqlite3.Connection, config: dict, **kwargs):
         super().__init__(**kwargs)
@@ -26,5 +24,3 @@ class DNDBot(commands.Bot):
         self.CampaignSQLHelper = CampaignSQLHelper(self)
         self.CampaignPlayerManager: CampaignPlayerManager = None
         self.campaign_creation_callback: callable = None
-
-

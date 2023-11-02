@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import functools
 import string
 import traceback
 from typing import Union, TYPE_CHECKING
@@ -12,6 +13,15 @@ from .FakeMember import FakeMember
 
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
     from ..DNDBot import DNDBot
+
+
+def deprecated(func):
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        await args[0].send("This command is deprecated. It should still work, but it might not.")
+        return await args[1](*args, **kwargs)
+
+    return wrapper
 
 
 class CampaignPlayerManager(commands.Cog):
@@ -39,7 +49,7 @@ class CampaignPlayerManager(commands.Cog):
             commit = self.bot.CampaignSQLHelper.waitlist_player(campaign, member)
             if commit:
                 await channel.send(f"{member.display_name} has been added to the waitlist for {campaign.name}.")
-                await self.update_status(campaign)
+                # await self.update_status(campaign)
                 self.bot.connection.commit()
                 return True
         if waitlisted:
@@ -63,7 +73,7 @@ class CampaignPlayerManager(commands.Cog):
                     if i.name == "lobby":
                         await i.send("This campaign now meets its minimum player goal!")
             self.bot.connection.commit()
-            await self.update_status(campaign)
+            # await self.update_status(campaign)
             return True
         else:
             await channel.send("An unknown error occurred.")
@@ -93,7 +103,7 @@ class CampaignPlayerManager(commands.Cog):
 
             await to_react.add_reaction("✅")
             await to_react.add_reaction("❌")
-            await self.update_status(campaign)
+            #await self.update_status(campaign)
 
         campaign: CampaignInfo = self.bot.CampaignSQLHelper.select_campaign(campaign_id)
         guest_role = context.guild.get_role(self.bot.config["guest_role"])
@@ -139,7 +149,7 @@ class CampaignPlayerManager(commands.Cog):
                     await unwaitlist_apply(context.guild.get_member(waitlisted_players[0]["id"]))
         else:
             await context.send("An unknown error occurred.")
-        await self.update_status(campaign)
+        #await self.update_status(campaign)
 
     @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
     @commands.command()
@@ -192,7 +202,7 @@ class CampaignPlayerManager(commands.Cog):
 
             await to_react.add_reaction("✅")
             await to_react.add_reaction("❌")
-            await self.update_status(i)
+            # await self.update_status(i)
 
     @commands.command()
     async def update_campaign_players(self, context: commands.Context, campaign_id: Union[int, str]):
@@ -205,7 +215,7 @@ class CampaignPlayerManager(commands.Cog):
             await self.bot.CampaignPlayerManager.add_player(context.channel, i, campaign_id)
 
         await context.send("Campaign players updated.")
-        await self.update_status(campaign)
+        #await self.update_status(campaign)
 
     @commands.command()
     async def show_waitlisted_players(self, context: commands.Context, campaign_id: Union[int, str]):
@@ -225,9 +235,13 @@ class CampaignPlayerManager(commands.Cog):
     async def update_status(self, campaign: CampaignInfo):
         if campaign.status_message == 0 or campaign.information_channel == 0:
             return
+
         message_text = f"Status: {campaign.current_players} out of {campaign.max_players} seats filled.\nLocked: {'Yes' if campaign.locked else 'No'}"
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign.name)
-        info_channel: discord.TextChannel = self.bot.get_channel(campaign.information_channel)
+        try:
+            info_channel: discord.TextChannel = self.bot.get_channel(campaign.information_channel)
+        except:
+            return
         messages = [i async for i in info_channel.history(limit=1)]
         if len(messages) == 0:
             await self.bot.wait_for('message', check=lambda message: message.channel == info_channel)
@@ -247,16 +261,18 @@ class CampaignPlayerManager(commands.Cog):
         await self.update_status_embed(campaign)
 
     @commands.command()
+    @deprecated
     async def update_campaign_status(self, context: commands.Context, campaign: Union[int, str]):
 
-        await self.bot.CampaignPlayerManager.update_status(self.bot.CampaignSQLHelper.select_campaign(campaign))
+        #await self.bot.CampaignPlayerManager.update_status(#self.bot.CampaignSQLHelper.select_campaign(campaign))
         await context.send("status updated")
 
     @commands.command()
+    @deprecated
     async def mass_update(self, context):
         campaigns = [i["id"] for i in self.bot.db.execute("SELECT id FROM campaigns").fetchall()]
         for i in campaigns:
-            await self.bot.CampaignPlayerManager.update_status(self.bot.CampaignSQLHelper.select_campaign(i))
+            #await self.bot.CampaignPlayerManager.update_status(#self.bot.CampaignSQLHelper.select_campaign(i))
             await asyncio.sleep(1)
         await context.send("done")
 
@@ -295,8 +311,8 @@ class CampaignPlayerManager(commands.Cog):
             embed.set_field_at(4, name="Locked", value=f"{bool(campaign.locked)}", inline=False)
 
         except discord.NotFound:
-            embed = await self.create_status_message(campaign)
-
+            # embed = await self.create_status_message(campaign)
+            return
         try:
             await message.edit(embed=embed)
         except:
@@ -308,6 +324,7 @@ class CampaignPlayerManager(commands.Cog):
             self.bot.connection.commit()
 
     @commands.command()
+    @deprecated
     async def init_status(self, context):
         async def create_status_message(campaign: CampaignInfo) -> discord.Embed:
             embed = discord.Embed(
@@ -332,6 +349,7 @@ class CampaignPlayerManager(commands.Cog):
         await context.send("done")
 
     @commands.command()
+    @deprecated
     async def add_status_channels(self, context):
         # get message status channel
         channel = self.bot.get_channel(self.bot.config["status_channel"])
@@ -354,6 +372,7 @@ class CampaignPlayerManager(commands.Cog):
         await context.send("done")
 
     @commands.command()
+    @deprecated
     async def fix_status(self, context: commands.Context, campaign: Union[int, str]):
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign)
         await self.update_status_embed(campaign)
@@ -361,6 +380,7 @@ class CampaignPlayerManager(commands.Cog):
 
     @commands.has_any_role(1050188024287338567)  # dev
     @commands.command()
+    @deprecated
     async def create_status(self, context: commands.Context, campaign: Union[int, str]):
         async def create_status_message() -> discord.Embed:
             embed = discord.Embed(
@@ -389,7 +409,7 @@ class CampaignPlayerManager(commands.Cog):
         commit = self.bot.CampaignSQLHelper.set_max_players(campaign, count)
         if commit:
             self.bot.connection.commit()
-            await self.update_status(campaign)
+            #await self.update_status(campaign)
             await context.send(f"Set max players for {campaign.name} to {count}.")
         else:
             await context.send("An unknown error occurred.")

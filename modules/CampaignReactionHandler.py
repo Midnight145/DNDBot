@@ -132,7 +132,7 @@ class CampaignReactionHandler(commands.Cog):
                     campaign_info.info_message = embed.fields[FieldValuesWebsite.info_message].value
                     campaign_info.system = embed.fields[FieldValuesWebsite.system].value
                     campaign_info.meeting_frequency = embed.fields[FieldValuesWebsite.meeting_frequency].value
-                    if "Day" in embed.fields[FieldValuesWebsite.meeting_day].value:
+                    if "Day" in embed.fields[FieldValuesWebsite.meeting_day].name:
                         campaign_info.meeting_day = embed.fields[FieldValuesWebsite.meeting_day].value
                         campaign_info.meeting_date = ""
                     else:
@@ -153,7 +153,7 @@ class CampaignReactionHandler(commands.Cog):
                     campaign_info.info_message = embed.fields[FieldValues.info_message].value
                     campaign_info.system = embed.fields[FieldValues.system].value
                     campaign_info.meeting_frequency = embed.fields[FieldValues.meeting_frequency].value
-                    if "Day" in embed.fields[FieldValues.meeting_day].value:
+                    if "Day" in embed.fields[FieldValues.meeting_day].name:
                         campaign_info.meeting_day = embed.fields[FieldValues.meeting_day].value
                         campaign_info.meeting_date = ""
                     else:
@@ -169,7 +169,8 @@ class CampaignReactionHandler(commands.Cog):
                     await message.delete()
                     await channel.send(f"Campaign {campaign_info.name} has been created!")
                     if website:
-                        await self.bot.campaign_creation_callback(campaign_info=campaign_info)
+                        info = self.bot.CampaignSQLHelper.select_campaign(campaign_info.name)
+                        await self.bot.campaign_creation_callback(campaign_info=info)
                         return
                 else:
                     await channel.send("An unknown error occurred while creating the campaign.")
@@ -239,7 +240,7 @@ class CampaignReactionHandler(commands.Cog):
             else:
                 await message.channel.send("An unknown error occurred.")
                 return
-        await self.bot.CampaignPlayerManager.update_status(campaign)
+        #await self.bot.CampaignPlayerManager.update_status(campaign)
 
     async def deny_player(self, message: discord.Message, member: discord.Member, reactor: discord.Member) -> None:
         """
@@ -298,7 +299,7 @@ class CampaignReactionHandler(commands.Cog):
 
             await to_react.add_reaction("✅")
             await to_react.add_reaction("❌")
-            await self.bot.CampaignPlayerManager.update_status(campaign)
+            #await self.bot.CampaignPlayerManager.update_status(campaign)
 
         embed = message.embeds[0]
         discord_id = int(embed.fields[4].value)
@@ -355,7 +356,7 @@ class CampaignReactionHandler(commands.Cog):
             return
         # await message.clear_reaction("✅")
         # await message.clear_reaction("❌")
-        await self.bot.CampaignPlayerManager.update_status(campaign)
+        #await self.bot.CampaignPlayerManager.update_status(campaign)
 
     async def deny_waitlisted_player(self, message: discord.Message, member: discord.Member, reactor: discord.Member):
         """

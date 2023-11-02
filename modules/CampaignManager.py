@@ -1,3 +1,4 @@
+import functools
 import sys
 import typing
 
@@ -5,22 +6,34 @@ import discord
 from discord.ext import commands
 import datetime
 from typing import Union, TYPE_CHECKING
+
 from .CampaignInfo import CampaignInfo
 from .errorhandler import TracebackHandler
 import shlex
 
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
     from ..DNDBot import DNDBot
+    from . import CampaignSQLHelper, CampaignBuilder
+
+
+def deprecated(func):
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        await args[0].send("This command is deprecated. It should still work, but it might not.")
+        return await args[1](*args, **kwargs)
+
+    return wrapper
 
 
 class CampaignManager(commands.Cog):
     def __init__(self, bot: 'DNDBot'):
         self.bot = bot
-        self.CampaignBuilder = self.bot.CampaignBuilder
-        self.CampaignSQLHelper = self.bot.CampaignSQLHelper
+        self.CampaignBuilder: CampaignBuilder = self.bot.CampaignBuilder
+        self.CampaignSQLHelper: CampaignSQLHelper = self.bot.CampaignSQLHelper
 
     @commands.command(aliases=["register"])
     @commands.has_any_role(1050188024287338567)  # dev
+    @deprecated
     async def register_campaign(self, context: commands.Context, name: str, role: discord.Role,
                                 category: discord.CategoryChannel, information_channel: discord.TextChannel,
                                 dm: discord.Member, min_players: str, max_players: str, current_players: str, locked: int = 0):
@@ -79,6 +92,7 @@ class CampaignManager(commands.Cog):
 
     @commands.command()
     @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
+    @deprecated
     async def create_campaign(self, context: commands.Context, name: str, dungeon_master: discord.Member,
                               min_players: int, max_players: int, location: str, playstyle: str):
         """
@@ -112,13 +126,14 @@ class CampaignManager(commands.Cog):
             self.bot.connection.commit()
             await (context.guild.get_channel(self.bot.config["notification_channel"])).send(
                 f"<@&{self.bot.config['new_campaign_role']}>: A new campaign has opened: "
-                f"<#{campaign_info.information_channel}> run by <@{campaign_info.dm}>! "
-                f"Sign up in <#{812549890227437588}>")
-            await self.bot.CampaignPlayerManager.update_status(campaign_info)
+                f"{campaign_info.name}, run by <@{campaign_info.dm}>! "
+                f"Apply to join here: <https://www.untcriticalhit.org/apply/{campaign_info.id}>")
+            # await self.bot.CampaignPlayerManager.update_status(campaign_info)
         else:
             await context.send("Something went wrong.")
 
     @commands.command()
+    @deprecated
     async def set_campaign_info(self, context: commands.Context, campaign: Union[int, str], *, info: str):
         """
         :param context: Command context
@@ -139,6 +154,7 @@ class CampaignManager(commands.Cog):
             await context.send("Error setting campaign info")
 
     @commands.command()
+    @deprecated
     async def set_campaign_field(self, context: commands.Context, campaign: Union[int, str], field: str, *, value: str):
         """
         :param context: Command context
@@ -154,7 +170,7 @@ class CampaignManager(commands.Cog):
         commit = self.CampaignSQLHelper.set_campaign_field(campaign, field, value)
         if commit:
             self.bot.connection.commit()
-            await self.bot.CampaignPlayerManager.update_status(campaign)
+            # await self.bot.CampaignPlayerManager.update_status(campaign)
         else:
             await context.send("Error setting campaign field")
 
@@ -176,10 +192,11 @@ class CampaignManager(commands.Cog):
         commit2 = await self.CampaignBuilder.delete_campaign(resp)
 
         status_channel = context.guild.get_channel(self.bot.config["status_channel"])
-        if resp.status_message != 0:
+        try:
             status_message = await status_channel.fetch_message(resp.status_message)
             await status_message.delete()
-
+        except:
+            pass
         if commit:
             await context.send(f"Campaign \"{resp.name}\" deleted.")
             self.bot.connection.commit()
@@ -225,7 +242,7 @@ class CampaignManager(commands.Cog):
             await context.send(f"Campaign \"{resp.name}\" renamed to \"{name}\".")
             self.bot.connection.commit()
             # update status
-            await self.bot.CampaignPlayerManager.update_status(resp2)
+            # await self.bot.CampaignPlayerManager.update_status(resp2)
 
         else:
             await context.send(f"There was an error renaming \"{resp.name}\"")
@@ -291,7 +308,7 @@ class CampaignManager(commands.Cog):
         commit = self.CampaignSQLHelper.set_campaign_status(campaign, 1)  # lock
         if commit:
             self.bot.connection.commit()
-            await self.bot.CampaignPlayerManager.update_status(campaign)
+            # await self.bot.CampaignPlayerManager.update_status(campaign)
             await context.send(f"Campaign {campaign.name} locked.")
 
         else:
@@ -309,7 +326,7 @@ class CampaignManager(commands.Cog):
         commit = self.CampaignSQLHelper.set_campaign_status(campaign, 0)  # unlock
         if commit:
             self.bot.connection.commit()
-            await self.bot.CampaignPlayerManager.update_status(campaign)
+            # await self.bot.CampaignPlayerManager.update_status(campaign)
             await context.send(f"Campaign {campaign.name} unlocked.")
 
         else:
@@ -377,6 +394,20 @@ class CampaignManager(commands.Cog):
             self.CampaignSQLHelper.set_campaign_field(campaign, key, value)
         self.bot.connection.commit()
         await context.send("Campaign updated with\n" + "\n".join([f"{fields[i]}={values[i]}" for i in range(len(fields))]))
+
+    @commands.command()
+    async def verify_dms(self, context: commands.Context):
+        async with context.typing():
+            response = ""
+            campaigns = self.CampaignSQLHelper.get_campaigns()
+            for campaign in campaigns:
+                dm = context.guild.get_member(campaign["dm"])
+                if dm is None:
+                    response += f"Could not resolve user {campaign['dm']} for campaign {campaign['name']}\n"
+                # else:
+                    # response += f"Resolved user {dm.name} for campaign {campaign['name']}\n"
+            await context.send(response)
+
 
 
 async def setup(bot):

@@ -34,12 +34,12 @@ class CampaignSQLHelper:
             self.bot.db.execute(
                 f"INSERT INTO campaigns (name, dm, role, category, information_channel, min_players, max_players, "
                 f"current_players, status_message, location, playstyle, session_length, meeting_frequency, "
-                f"meeting_day, meeting_time, meeting_date, system, new_player_friendly, timestamp) VALUES "
-                f"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                f"meeting_day, meeting_time, meeting_date, system, new_player_friendly, timestamp, info_message) VALUES "
+                f"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (vals.name, vals.dm, vals.role, vals.category, vals.information_channel, vals.min_players,
                  vals.max_players, vals.current_players, vals.status_message, vals.location, vals.playstyle,
                  vals.session_length, vals.meeting_frequency, vals.meeting_day, vals.meeting_time, vals.meeting_date,
-                 vals.system, vals.new_player_friendly, vals.timestamp))
+                 vals.system, vals.new_player_friendly, vals.timestamp, vals.info_message))
             return True
         except Exception:
             traceback.print_exc()

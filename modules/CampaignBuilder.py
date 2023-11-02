@@ -57,13 +57,13 @@ class CampaignBuilder(commands.Cog):
         retval.category = category.id
 
         # Fetch "Information" category
-        info_category = guild.get_channel(self.bot.config["info_category"])
-        # Create campaign's information channel and add to CampaignInfo
-        if announce:
-            global_channel = await info_category.create_text_channel(name=name)
-            retval.information_channel = global_channel.id
-        else:
-            retval.information_channel = 0
+        # info_category = guild.get_channel(self.bot.config["info_category"])
+        # # Create campaign's information channel and add to CampaignInfo
+        # if announce:
+        #     global_channel = await info_category.create_text_channel(name=name)
+        #     retval.information_channel = global_channel.id
+        # else:
+        retval.information_channel = 0
         # Create campaign announcement channel
         announcements = await category.create_text_channel(name="announcements")
         await announcements.send(announcement_message(name))
@@ -86,13 +86,13 @@ class CampaignBuilder(commands.Cog):
         # Create campaign voice channel
         await category.create_voice_channel(name=name)
 
-        if announce:
-        # Create campaign status message
-            status_message = await self.bot.get_channel(self.bot.config["status_channel"]).send(
-                embed=self.create_status_message(retval))
-            retval.status_message = status_message.id
-        else:
-            retval.status_message = 0
+        # if announce:
+        # # Create campaign status message
+        #     status_message = await self.bot.get_channel(self.bot.config["status_channel"]).send(
+        #         embed=self.create_status_message(retval))
+        #     retval.status_message = status_message.id
+        # else:
+        retval.status_message = 0
         return retval
 
     async def delete_campaign(self, info: CampaignInfo) -> bool:
@@ -107,7 +107,10 @@ class CampaignBuilder(commands.Cog):
         #                               reason="campaign deleted", end=True, sync_permissions=True)
         # except:
         #     await global_channel.delete()
-        await global_channel.delete()
+        try:
+            await global_channel.delete()
+        except:
+            pass
         # delete channels
         for channel in category.channels:
             await channel.delete()

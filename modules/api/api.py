@@ -24,8 +24,13 @@ async def get_campaigns(auth: str, response: Response):
     if guild is None:
         guild = DNDBot.instance.get_guild(DNDBot.instance.config["server"])
     for val in campaigns:
-        val["dm_username"] = guild.get_member(val["dm"]).name
-        val["dm_nickname"] = guild.get_member(val["dm"]).display_name
+        dm = guild.get_member(val["dm"])
+        if dm is None:
+            val["dm_username"] = "Unknown"
+            val["dm_nickname"] = "Unknown"
+        else:
+            val["dm_username"] = dm.name
+            val["dm_nickname"] = dm.display_name
         players = DNDBot.instance.db.execute(f"SELECT * FROM players WHERE campaign = ?", (val["id"],)).fetchall()
         val["players"] = [i["id"] for i in players if i["waitlisted"] == 0]
         val["waitlist"] = [i["id"] for i in players if i["waitlisted"] == 1]
@@ -49,8 +54,13 @@ async def get_campaign(campaign_id: typing.Union[int, str], auth: str, response:
     resp["waitlist"] = [i["id"] for i in players if i["waitlisted"] == 1]
     if guild is None:
         guild = DNDBot.instance.get_guild(DNDBot.instance.config["server"])
-    resp["dm_username"] = guild.get_member(resp["dm"]).name
-    resp["dm_nickname"] = guild.get_member(resp["dm"]).display_name
+    dm = guild.get_member(resp["dm"])
+    if dm is None:
+        resp["dm_username"] = "Unknown"
+        resp["dm_nickname"] = "Unknown"
+    else:
+        resp["dm_username"] = dm.name
+        resp["dm_nickname"] = dm.display_name
     resp["new_player_friendly"] = resp["new_player_friendly"]
     return json.dumps(resp)
 
@@ -264,6 +274,6 @@ async def campaign_creation_callback(*args, campaign_info=None):
     DNDBot.instance.connection.commit()
     await (guild.get_channel(DNDBot.instance.config["notification_channel"])).send(
         f"<@&{DNDBot.instance.config['new_campaign_role']}>: A new campaign has opened: "
-        f"<#{campaign_info.information_channel}> run by <@{campaign_info.dm}>! "
+        f"{campaign_info.name}, run by <@{campaign_info.dm}>! "
         f"Apply to join here: <https://www.untcriticalhit.org/apply/{campaign_info.id}>")
-    await DNDBot.instance.CampaignPlayerManager.update_status(campaign_info)
+    # await DNDBot.instance.CampaignPlayerManager.update_status(campaign_info)
