@@ -382,6 +382,7 @@ class CampaignManager(commands.Cog):
     @commands.command()
     async def update_campaign(self, context: commands.Context, campaign: int, *, kwargs):
         campaign = self.CampaignSQLHelper.select_campaign(campaign)
+        kwargs = kwargs.replace("“", "\"").replace("”", "\"")  # replace smart quotes with normal quotes
         args = shlex.split(kwargs)
         print(args)
         fields = []
