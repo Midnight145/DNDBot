@@ -58,6 +58,7 @@ class CampaignInfo:
     system: str = ""
     new_player_friendly: str = ""
     timestamp: int = 0
+    paused: int = 0
     players: list[int] = None
     waitlist: list[int] = None
 
