@@ -275,5 +275,5 @@ async def campaign_creation_callback(*args, campaign_info=None):
     await (guild.get_channel(DNDBot.instance.config["notification_channel"])).send(
         f"<@&{DNDBot.instance.config['new_campaign_role']}>: A new campaign has opened: "
         f"{campaign_info.name}, run by <@{campaign_info.dm}>! "
-        f"Apply to join here: <https://www.untcriticalhit.org/apply/{campaign_info.id}>")
+        f"Apply to join here: <https://www.untcriticalhit.org/campaigns#{campaign_info.id}>")
     # await DNDBot.instance.CampaignPlayerManager.update_status(campaign_info)
