@@ -99,6 +99,7 @@ class CampaignBuilder(commands.Cog):
 
         # fetch campaign's category
         category = self.bot.get_channel(info.category)
+        guild = category.guild
         # fetch global campaign information channel
         global_channel = self.bot.get_channel(info.information_channel)
         # move channel to archive category
@@ -140,8 +141,8 @@ class CampaignBuilder(commands.Cog):
             # if member not in any other campaigns
             if not found:
                 # remove member, add guest
-                await member.remove_roles(global_channel.guild.get_role(self.bot.config["member_role"]))
-                await member.add_roles(global_channel.guild.get_role(self.bot.config["guest_role"]))
+                await member.remove_roles(guild.get_role(self.bot.config["member_role"]))
+                await member.add_roles(guild.get_role(self.bot.config["guest_role"]))
 
         # delete role
         await campaign_role.delete()
