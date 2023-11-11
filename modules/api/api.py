@@ -45,13 +45,18 @@ async def get_campaign(campaign_id: typing.Union[int, str], auth: str, response:
         campaign_id = int(campaign_id)
     except ValueError:
         pass
-    if isinstance(campaign_id, int):
-        resp = DNDBot.instance.db.execute(f"SELECT * FROM campaigns WHERE id = {campaign_id}").fetchone()
-    else:
-        resp = DNDBot.instance.db.execute(f"SELECT * FROM campaigns WHERE name LIKE ?", (campaign_id,)).fetchone()
-    players = DNDBot.instance.db.execute(f"SELECT * FROM players WHERE campaign = ?", (resp["id"],)).fetchall()
-    resp["players"] = [i["id"] for i in players if i["waitlisted"] == 0]
-    resp["waitlist"] = [i["id"] for i in players if i["waitlisted"] == 1]
+    try:
+        if isinstance(campaign_id, int):
+            resp = DNDBot.instance.db.execute(f"SELECT * FROM campaigns WHERE id = {campaign_id}").fetchone()
+        else:
+            resp = DNDBot.instance.db.execute(f"SELECT * FROM campaigns WHERE name LIKE ?", (campaign_id,)).fetchone()
+
+        players = DNDBot.instance.db.execute(f"SELECT * FROM pla    yers WHERE campaign = ?", (resp["id"],)).fetchall()
+        resp["players"] = [i["id"] for i in players if i["waitlisted"] == 0]
+        resp["waitlist"] = [i["id"] for i in players if i["waitlisted"] == 1]
+    except TypeError:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return json.dumps({"error": "Campaign not found"})
     if guild is None:
         guild = DNDBot.instance.get_guild(DNDBot.instance.config["server"])
     dm = guild.get_member(resp["dm"])
