@@ -30,52 +30,7 @@ class CampaignManager(commands.Cog):
         self.bot = bot
         self.CampaignBuilder: CampaignBuilder = self.bot.CampaignBuilder
         self.CampaignSQLHelper: CampaignSQLHelper = self.bot.CampaignSQLHelper
-
-    @commands.command(aliases=["register"])
-    @commands.has_any_role(1050188024287338567)  # dev
-    @deprecated
-    async def register_campaign(self, context: commands.Context, name: str, role: discord.Role,
-                                category: discord.CategoryChannel, information_channel: discord.TextChannel,
-                                dm: discord.Member, min_players: str, max_players: str, current_players: str, locked: int = 0):
-        """
-        :param context: Command context
-        :param name: Campaign name
-        :param role: Campaign role
-        :param category: Campaign category
-        :param information_channel: Campaign "global" information channel
-        :param dm: Campaign DM
-        :param min_players: Minimum number of players necessary to start
-        :param max_players: Maximum number of players allowed
-        :param current_players: Current number of players in the campaign
-        :return: None
-        """
-        campaign_info = CampaignInfo()
-        campaign_info.name = name
-        campaign_info.role = role.id
-        campaign_info.category = category.id
-        campaign_info.information_channel = information_channel.id
-        campaign_info.dm = dm.id
-        campaign_info.min_players = int(min_players)
-        campaign_info.max_players = int(max_players)
-        campaign_info.current_players = int(current_players)
-        campaign_info.locked = locked
-
-        commit = self.CampaignSQLHelper.create_campaign(campaign_info)
-        if commit:
-            embed = discord.Embed(
-                title="Campaign Registered",
-                description=f"Campaign {name} Registered.",
-                timestamp=datetime.datetime.utcnow()
-            )
-            embed.add_field(name="DM", value=f"{str(dm)} ({dm.id})")
-            embed.add_field(name="Role", value=str(context.guild.get_role(campaign_info["role"])))
-            embed.add_field(name="Category", value=str(context.guild.get_channel(campaign_info["category"]).name))
-            embed.add_field(name="Max Players", value=f"{max_players}")
-
-            await context.send(embed=embed)
-            self.bot.connection.commit()
-        else:
-            await context.send("Something went wrong.")
+        self.bot.CampaignManager = self
 
     @commands.command()
     @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
@@ -89,48 +44,6 @@ class CampaignManager(commands.Cog):
             await i.delete()
         await category.delete()
         await context.send(f"Category {category.name} deleted.")
-
-    @commands.command()
-    @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
-    @deprecated
-    async def create_campaign(self, context: commands.Context, name: str, dungeon_master: discord.Member,
-                              min_players: int, max_players: int, location: str, playstyle: str):
-        """
-        :param context: Command context
-        :param name: Campaign name
-        :param dungeon_master: Campaign DM, can be Union[str, int] as it is typecast
-        :param min_players: Minimum number of players necessary to start
-        :param max_players: Maximum number of players allowed
-        :return: None
-        """
-
-        campaign_info = await self.CampaignBuilder.create_campaign(context.guild, name, dungeon_master)
-        campaign_info.min_players = min_players
-        campaign_info.max_players = max_players
-        campaign_info.location = location
-        campaign_info.playstyle = playstyle
-
-        commit = self.CampaignSQLHelper.create_campaign(campaign_info)
-        if commit:
-            embed = discord.Embed(
-                title="Campaign Created",
-                description=f"Campaign {name} created.",
-                timestamp=datetime.datetime.utcnow()
-            )
-            embed.add_field(name="DM", value=f"{str(dungeon_master)} ({dungeon_master.id})")
-            embed.add_field(name="Role", value=str(context.guild.get_role(campaign_info.role)))
-            embed.add_field(name="Category", value=str(context.guild.get_channel(campaign_info.category).name))
-            embed.add_field(name="Max Players", value=f"{max_players}")
-            await context.send(embed=embed)
-
-            self.bot.connection.commit()
-            await (context.guild.get_channel(self.bot.config["notification_channel"])).send(
-                f"<@&{self.bot.config['new_campaign_role']}>: A new campaign has opened: "
-                f"{campaign_info.name}, run by <@{campaign_info.dm}>! "
-                f"Apply to join here: <https://www.untcriticalhit.org/campaigns#{campaign_info.id}>")
-            # await self.bot.CampaignPlayerManager.update_status(campaign_info)
-        else:
-            await context.send("Something went wrong.")
 
     @commands.command()
     @deprecated
@@ -174,16 +87,19 @@ class CampaignManager(commands.Cog):
         else:
             await context.send("Error setting campaign field")
 
-    @commands.command()
+    @commands.command(aliases=['delete_campaign'])
     @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
-    async def delete_campaign(self, context: commands.Context, campaign: Union[int, str], *, reason="Campaign deleted"):
+    async def delete_campaign_command(self, context: commands.Context, campaign: Union[int, str], *,
+                                      reason="Campaign deleted"):
         """
         :param context: Command context
         :param campaign: Either campaign name (wrapped in quotes) or campaign ID
         :param reason: The reason the campaign was deleted, DM'd to the members of the campaign.
         :return: None
         """
+        await self.delete_campaign(context.channel, campaign, reason)
 
+    async def delete_campaign(self, channel: discord.TextChannel, campaign: Union[int, str], reason="Campaign deleted"):
         resp = self.CampaignSQLHelper.select_campaign(campaign)
         members = [i["id"] for i in self.CampaignSQLHelper.get_players(resp)]
 
@@ -191,37 +107,35 @@ class CampaignManager(commands.Cog):
 
         commit2 = await self.CampaignBuilder.delete_campaign(resp)
 
-        status_channel = context.guild.get_channel(self.bot.config["status_channel"])
+        status_channel = channel.guild.get_channel(self.bot.config["status_channel"])
         try:
             status_message = await status_channel.fetch_message(resp.status_message)
             await status_message.delete()
-        except:
+        except Exception:
             pass
         if commit:
-            await context.send(f"Campaign \"{resp.name}\" deleted.")
+            await channel.send(f"Campaign \"{resp.name}\" deleted.")
             self.bot.connection.commit()
         else:
-            await context.send(f"There was an error deleting \"{resp.name}\"")
+            await channel.send(f"There was an error deleting \"{resp.name}\"")
             await self.handle_error()
 
             return
 
         if commit2 is None:
-            await context.send(f"There was an error deleting \"{resp.name}\", fuck if I know what happened. Ping "
-                               f"Ryan, he'll know what to do.")
+            await channel.send(f"There was an error deleting \"{resp.name}\".")
             return
 
         for member_id in members:
-            member = context.guild.get_member(member_id)
+            member = channel.guild.get_member(member_id)
             if member is None:
-                await context.send(f"Member {member_id} not found- this shouldn't happen, but it did. Ping Ryan, he'll know what "
-                                   f"to do.")
+                await channel.send(f"Member {member_id} not found, likely left the server")
                 continue
             try:
                 await member.send(f'You have been removed from a campaign due to it being ended by its DM or the '
                                   f'President. Campaign: {resp.name}. Reason: {reason}.')
             except discord.Forbidden:
-                await context.send(f"Member {str(member)} has DMs disabled, they will not be notified of their "
+                await channel.send(f"Member {str(member)} has DMs disabled, they will not be notified of their "
                                    f"removal from the campaign.")
 
     @commands.command()
@@ -236,13 +150,10 @@ class CampaignManager(commands.Cog):
 
         resp = self.CampaignSQLHelper.select_campaign(campaign)
         commit = self.CampaignSQLHelper.rename_campaign(resp, name)
-        resp2 = self.CampaignSQLHelper.select_campaign(campaign)
 
         if commit:
             await context.send(f"Campaign \"{resp.name}\" renamed to \"{name}\".")
             self.bot.connection.commit()
-            # update status
-            # await self.bot.CampaignPlayerManager.update_status(resp2)
 
         else:
             await context.send(f"There was an error renaming \"{resp.name}\"")
@@ -287,14 +198,14 @@ class CampaignManager(commands.Cog):
                                f"{row['current_players']}/{row['max_players']} {'Locked' if row['locked'] else ''}\n"
 
         if len(message_content) <= 2000:
-            await context.send("```\n"+message_content+"```")
+            await context.send("```\n" + message_content + "```")
             return
         else:
             campaigns = message_content.split("\n")
-            message_1 = campaigns[:len(campaigns)//2]
-            message_2 = campaigns[len(campaigns)//2:]
-            await context.send("```\n"+'\n'.join(message_1)+"```")
-            await context.send("```\n"+'\n'.join(message_2)+"```")
+            message_1 = campaigns[:len(campaigns) // 2]
+            message_2 = campaigns[len(campaigns) // 2:]
+            await context.send("```\n" + '\n'.join(message_1) + "```")
+            await context.send("```\n" + '\n'.join(message_2) + "```")
 
     @commands.command(aliases=["lock"])
     async def lock_campaign(self, context: commands.Context, campaign: Union[int, str]):
@@ -303,16 +214,7 @@ class CampaignManager(commands.Cog):
         :param campaign: Either campaign name or campaign ID
         :return: None
         """
-        campaign = self.CampaignSQLHelper.select_campaign(campaign)
-        campaign.locked = 1
-        commit = self.CampaignSQLHelper.set_campaign_status(campaign, 1)  # lock
-        if commit:
-            self.bot.connection.commit()
-            # await self.bot.CampaignPlayerManager.update_status(campaign)
-            await context.send(f"Campaign {campaign.name} locked.")
-
-        else:
-            print("Error locking campaign")
+        await self.update_lock_status(context.channel, campaign, 1)
 
     @commands.command(aliases=["unlock"])
     async def unlock_campaign(self, context: commands.Context, campaign: Union[int, str]):
@@ -321,16 +223,18 @@ class CampaignManager(commands.Cog):
         :param campaign: Either campaign name or campaign ID
         :return: None
         """
+        await self.update_lock_status(context.channel, campaign, 0)
+
+    async def update_lock_status(self, channel: discord.TextChannel, campaign: Union[int, str], status: int):
         campaign = self.CampaignSQLHelper.select_campaign(campaign)
-        campaign.locked = 0
-        commit = self.CampaignSQLHelper.set_campaign_status(campaign, 0)  # unlock
+        campaign.locked = status
+        commit = self.CampaignSQLHelper.set_campaign_status(campaign, status)  # unlock
         if commit:
             self.bot.connection.commit()
-            # await self.bot.CampaignPlayerManager.update_status(campaign)
-            await context.send(f"Campaign {campaign.name} unlocked.")
+            await channel.send(f"Campaign {campaign.name} {'un' if status == 0 else ''}locked.")
 
         else:
-            print("Error unlocking campaign")
+            print(f"Error {'un' if status == 0 else ''}locking campaign")
 
     @commands.command()
     async def list_players(self, context: commands.Context, campaign: Union[int, str]):
@@ -362,7 +266,8 @@ class CampaignManager(commands.Cog):
         await channel.send(f"An error occurred. Error code: {str(err_code)}")
 
     @commands.command()
-    async def fix_perms(self, context: commands.Context, channel: typing.Union[discord.CategoryChannel, discord.TextChannel], campaign_id: int):
+    async def fix_perms(self, context: commands.Context, channel: typing.Union[discord.CategoryChannel,
+                                                                               discord.TextChannel], campaign_id: int):
         if isinstance(channel, discord.TextChannel):
             channel = channel.category
         guild = channel.guild
@@ -394,7 +299,8 @@ class CampaignManager(commands.Cog):
             values.append(value)
             self.CampaignSQLHelper.set_campaign_field(campaign, key, value)
         self.bot.connection.commit()
-        await context.send("Campaign updated with\n" + "\n".join([f"{fields[i]}={values[i]}" for i in range(len(fields))]))
+        await context.send(
+            "Campaign updated with\n" + "\n".join([f"{fields[i]}={values[i]}" for i in range(len(fields))]))
 
     @commands.command()
     async def verify_dms(self, context: commands.Context):
@@ -406,9 +312,8 @@ class CampaignManager(commands.Cog):
                 if dm is None:
                     response += f"Could not resolve user {campaign['dm']} for campaign {campaign['name']}\n"
                 # else:
-                    # response += f"Resolved user {dm.name} for campaign {campaign['name']}\n"
+                # response += f"Resolved user {dm.name} for campaign {campaign['name']}\n"
             await context.send(response)
-
 
 
 async def setup(bot):

@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import functools
-import string
 import traceback
 from typing import Union, TYPE_CHECKING
 
@@ -80,36 +79,39 @@ class CampaignPlayerManager(commands.Cog):
             return False
 
     @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
-    @commands.command()
-    async def remove_player(self, context: commands.Context, member: Union[discord.Member, FakeMember],
+    @commands.command(aliases=['remove_player'])
+    async def remove_player_command(self, context: commands.Context, member: Union[discord.Member, FakeMember],
+                                    campaign_id: Union[int, str]):
+        await self.remove_player(context.channel, member, campaign_id)
+
+    async def remove_player(self, channel: discord.TextChannel, member: Union[discord.Member, FakeMember],
                             campaign_id: Union[int, str]):
         async def unwaitlist_apply(member_: discord.Member):
             name = member_.nick if member_.nick else member_.display_name
-            channel = context.guild.get_channel(self.bot.config["applications_channel"])
+            app_channel = channel.guild.get_channel(self.bot.config["applications_channel"])
 
-            dm = await context.guild.fetch_member(campaign.dm)
+            dm_ = await channel.guild.fetch_member(campaign.dm)
             embed = discord.Embed(
                 title=f"New Application for {campaign.name} -- from waitlist",
                 timestamp=datetime.datetime.utcnow()
             )
             embed.add_field(name="Campaign", value=campaign.name, inline=False)
-            embed.add_field(name="DM", value=str(dm), inline=False)
+            embed.add_field(name="DM", value=str(dm_), inline=False)
             embed.add_field(name="Name", value=name)
             embed.add_field(name="Discord", value=str(member_))
             embed.add_field(name="Discord ID", value=str(member_.id))
             embed.set_footer(text="React with a green checkmark to approve or a red X to deny.")
 
-            to_react = await channel.send(dm.mention, embed=embed)
+            to_react = await app_channel.send(dm_.mention, embed=embed)
 
             await to_react.add_reaction("✅")
             await to_react.add_reaction("❌")
-            #await self.update_status(campaign)
 
         campaign: CampaignInfo = self.bot.CampaignSQLHelper.select_campaign(campaign_id)
-        guest_role = context.guild.get_role(self.bot.config["guest_role"])
-        member_role = context.guild.get_role(self.bot.config["member_role"])
-        campaign_role = context.guild.get_role(campaign.role)
-        player_role = context.guild.get_role(self.bot.config["player_role"])
+        guest_role = channel.guild.get_role(self.bot.config["guest_role"])
+        member_role = channel.guild.get_role(self.bot.config["member_role"])
+        campaign_role = channel.guild.get_role(campaign.role)
+        player_role = channel.guild.get_role(self.bot.config["player_role"])
 
         commit = self.bot.CampaignSQLHelper.remove_player(campaign, member)
         if commit:
@@ -123,38 +125,35 @@ class CampaignPlayerManager(commands.Cog):
             if guest:
                 await member.remove_roles(member_role, player_role)
                 await member.add_roles(guest_role)
-            await context.send(f"{member.mention} has been removed from the campaign!")
+            await channel.send(f"{member.mention} has been removed from the campaign!")
             try:
                 await member.send(f"{member.display_name}: This is a notification that you have been removed from the "
                                   f"campaign {campaign.name}. Please contact the President or the Campaign Master if "
                                   f"you think this was a mistake.")
             except (discord.Forbidden, discord.HTTPException):
-                await context.send("Unable to send removal message to player.")
+                await channel.send("Unable to send removal message to player.")
 
             try:
-                dm = await context.guild.fetch_member(campaign.dm)
+                dm = await channel.guild.fetch_member(campaign.dm)
                 await dm.send(f"{dm.mention}: This is a notification that {member.mention} has been removed from the "
-                              f"campaign {campaign.name}. Please contact the President or the Campaign Master if you think "
-                              f"this was a mistake.")
+                              f"campaign {campaign.name}. Please contact the President or the Campaign Master if you "
+                              f"think this was a mistake.")
             except (discord.Forbidden, discord.HTTPException):
-                await context.send("Unable to send removal message to DM.")
+                await channel.send("Unable to send removal message to DM.")
 
             self.bot.connection.commit()
             if campaign.current_players - 1 < campaign.max_players:
                 waitlisted_players = self.bot.CampaignSQLHelper.get_waitlist(campaign)
                 if len(waitlisted_players) > 0:
                     waitlisted_players.sort(key=lambda x: x["pid"])
-                    # await self.bot.CampaignPlayerManager.add_player(context.channel, context.guild.get_member(
-                    # waitlisted_players[0]["id"]), campaign.name, True)
-                    await unwaitlist_apply(context.guild.get_member(waitlisted_players[0]["id"]))
+                    await unwaitlist_apply(channel.guild.get_member(waitlisted_players[0]["id"]))
         else:
-            await context.send("An unknown error occurred.")
-        #await self.update_status(campaign)
+            await channel.send("An unknown error occurred.")
 
     @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
     @commands.command()
     async def remove_missing_player(self, context, member: int, campaign_id: Union[int, str]):
-        await self.remove_player(context, FakeMember(member), campaign_id)
+        await self.remove_player(context.channel, FakeMember(member), campaign_id)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -184,7 +183,8 @@ class CampaignPlayerManager(commands.Cog):
             try:
                 campaigns.append(self.bot.CampaignSQLHelper.select_campaign(campaign_name))
             except AttributeError:
-                await message.guild.get_channel(self.bot.config["staff_botspam"]).send("Error in application for player: {}\nCampaign {} not found.".format(name, campaign_name))
+                await message.guild.get_channel(self.bot.config["staff_botspam"]).send(
+                    "Error in application for player: {}\nCampaign {} not found.".format(name, campaign_name))
         for i in campaigns:
             dm = await message.guild.fetch_member(i.dm)
             embed = discord.Embed(
@@ -208,14 +208,19 @@ class CampaignPlayerManager(commands.Cog):
     async def update_campaign_players(self, context: commands.Context, campaign_id: Union[int, str]):
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_id)
         campaign_role = context.guild.get_role(campaign.role)
-
+        campaign_players = self.bot.CampaignSQLHelper.get_players(campaign)
         members = campaign_role.members
 
         for i in members:
-            await self.bot.CampaignPlayerManager.add_player(context.channel, i, campaign_id)
+            if not any(i.id == j["id"] for j in campaign_players):
+                self.bot.CampaignSQLHelper.add_player(campaign, i)
 
-        await context.send("Campaign players updated.")
-        #await self.update_status(campaign)
+        commit = self.bot.CampaignSQLHelper.set_current_player_count(campaign, len(members))
+        if commit:
+            self.bot.connection.commit()
+            await context.send("Campaign players updated.")
+        else:
+            await context.send("An unknown error occurred.")
 
     @commands.command()
     async def show_waitlisted_players(self, context: commands.Context, campaign_id: Union[int, str]):
@@ -229,190 +234,24 @@ class CampaignPlayerManager(commands.Cog):
             timestamp=datetime.datetime.utcnow()
         )
         for i in waitlisted_players:
+            if i is None:
+                continue
             embed.add_field(name=i.name, value=str(i.id), inline=False)
         await context.send(embed=embed)
 
-    async def update_status(self, campaign: CampaignInfo):
-        if campaign.status_message == 0 or campaign.information_channel == 0:
-            return
-
-        message_text = f"Status: {campaign.current_players} out of {campaign.max_players} seats filled.\nLocked: {'Yes' if campaign.locked else 'No'}"
-        campaign = self.bot.CampaignSQLHelper.select_campaign(campaign.name)
-        try:
-            info_channel: discord.TextChannel = self.bot.get_channel(campaign.information_channel)
-        except:
-            return
-        messages = [i async for i in info_channel.history(limit=1)]
-        if len(messages) == 0:
-            await self.bot.wait_for('message', check=lambda message: message.channel == info_channel)
-            await info_channel.send(
-                content=message_text)
-            return
-        last_message = messages[0]
-        if last_message.author == self.bot.user:
-            try:
-                await last_message.edit(content=message_text)
-            except discord.HTTPException:
-                await info_channel.send(
-                    content=message_text)
-                await last_message.delete()
-        else:
-            await info_channel.send(content=message_text)
-        await self.update_status_embed(campaign)
-
-    @commands.command()
-    @deprecated
-    async def update_campaign_status(self, context: commands.Context, campaign: Union[int, str]):
-
-        #await self.bot.CampaignPlayerManager.update_status(#self.bot.CampaignSQLHelper.select_campaign(campaign))
-        await context.send("status updated")
-
-    @commands.command()
-    @deprecated
-    async def mass_update(self, context):
-        campaigns = [i["id"] for i in self.bot.db.execute("SELECT id FROM campaigns").fetchall()]
-        for i in campaigns:
-            #await self.bot.CampaignPlayerManager.update_status(#self.bot.CampaignSQLHelper.select_campaign(i))
-            await asyncio.sleep(1)
-        await context.send("done")
-
-    async def create_status_message(self, campaign: CampaignInfo) -> discord.Embed:
-        embed = discord.Embed(
-            title=f"{campaign.name}",
-            color=0x00ff00
-        )
-        embed.add_field(name="DM", value=(await self.bot.fetch_user(campaign.dm)).mention)
-        embed.add_field(name="Channel: ", value=f"<#{campaign.information_channel}>", inline=False)
-        embed.add_field(name="Status: ",
-                        value="✅ Open" if (campaign.current_players < campaign.max_players and not campaign.locked) else "❌ Closed",
-                        inline=False)
-        embed.add_field(name="Players: ", value=f"{campaign.current_players}/{campaign.max_players}")
-        embed.add_field(name="Locked", value=f"{bool(campaign.locked)}", inline=False)
-
-        return embed
-
-    async def update_status_embed(self, campaign: CampaignInfo):
-        if campaign.status_message == 0:
-            return
-        channel = self.bot.get_channel(self.bot.config["status_channel"])
-        message = None
-        try:
-            message = await channel.fetch_message(campaign.status_message)
-            embed: discord.Embed = message.embeds[0]
-            embed.title = f"{campaign.name} Status"
-            if len(embed.fields) == 4:
-                embed.add_field(name="tmp", value="tmp", inline=False)
-            embed.set_field_at(0, name="DM", value=(await self.bot.fetch_user(campaign.dm)).mention)
-            embed.set_field_at(1, name="Channel: ", value=f"<#{campaign.information_channel}>", inline=False)
-            embed.set_field_at(2, name="Status: ", value="✅ Open" if campaign.current_players < campaign.max_players and not campaign.locked
-                            else "❌ Closed", inline=False)
-            embed.set_field_at(3, name="Players: ", value=f"{campaign.current_players}/{campaign.max_players}",
-                            inline=False)
-            embed.set_field_at(4, name="Locked", value=f"{bool(campaign.locked)}", inline=False)
-
-        except discord.NotFound:
-            # embed = await self.create_status_message(campaign)
-            return
-        try:
-            await message.edit(embed=embed)
-        except:
-            await asyncio.sleep(.25)
-            if message is not None:
-                await message.delete()
-            new_message = await channel.send(embed=embed)
-            self.bot.db.execute("UPDATE campaigns SET status_message = ? WHERE id = ?", (new_message.id, campaign.id))
-            self.bot.connection.commit()
-
-    @commands.command()
-    @deprecated
-    async def init_status(self, context):
-        async def create_status_message(campaign: CampaignInfo) -> discord.Embed:
-            embed = discord.Embed(
-                title=f"{campaign.name}",
-                color=0x00ff00
-            )
-            embed.add_field(name="DM", value=(await self.bot.fetch_user(campaign.dm)).mention)
-            embed.add_field(name="Channel: ", value=f"<#{campaign.information_channel}>", inline=False)
-            embed.add_field(name="Status: ",
-                            value="✅ Open" if campaign.current_players < campaign.max_players else "❌ Closed",
-                            inline=False)
-            embed.add_field(name="Players: ", value=f"{campaign.current_players}/{campaign.max_players}")
-
-            return embed
-
-        campaigns = [i["id"] for i in self.bot.db.execute("SELECT id FROM campaigns").fetchall()]
-        for i in campaigns:
-            message = await context.guild.get_channel(self.bot.config["status_channel"]).send(
-                embed=(await create_status_message(self.bot.CampaignSQLHelper.select_campaign(i))))
-            self.bot.db.execute("UPDATE campaigns SET status_message = ? WHERE id = ?", (message.id, i))
-            self.bot.connection.commit()
-        await context.send("done")
-
-    @commands.command()
-    @deprecated
-    async def add_status_channels(self, context):
-        # get message status channel
-        channel = self.bot.get_channel(self.bot.config["status_channel"])
-        # get all campaigns
-        campaigns = [i["id"] for i in self.bot.db.execute("SELECT id FROM campaigns").fetchall()]
-        # for each campaign
-        for i in campaigns:
-            # get the campaign
-            campaign = self.bot.CampaignSQLHelper.select_campaign(i)
-            # get the message
-            message = await channel.fetch_message(campaign.status_message)
-            # get the embed
-            embed: discord.Embed = message.embeds[0]
-            # add the field
-            embed.remove_field(3)
-            embed.insert_field_at(1, name="Channel: ", value=f"<#{campaign.information_channel}>", inline=False)
-            # edit the message
-            await message.edit(embed=embed)
-            await asyncio.sleep(.5)  # rate limit
-        await context.send("done")
-
-    @commands.command()
-    @deprecated
-    async def fix_status(self, context: commands.Context, campaign: Union[int, str]):
-        campaign = self.bot.CampaignSQLHelper.select_campaign(campaign)
-        await self.update_status_embed(campaign)
-        await context.send("done")
-
-    @commands.has_any_role(1050188024287338567)  # dev
-    @commands.command()
-    @deprecated
-    async def create_status(self, context: commands.Context, campaign: Union[int, str]):
-        async def create_status_message() -> discord.Embed:
-            embed = discord.Embed(
-                title=f"{campaign.name}",
-                color=0x00ff00
-            )
-            embed.add_field(name="DM", value=(await self.bot.fetch_user(campaign.dm)).mention)
-            embed.add_field(name="Channel: ", value=f"<#{campaign.information_channel}>", inline=False)
-            embed.add_field(name="Status: ",
-                            value="✅ Open" if campaign.current_players < campaign.max_players else "❌ Closed",
-                            inline=False)
-            embed.add_field(name="Players: ", value=f"{campaign.current_players}/{campaign.max_players}", inline=False)
-
-            return embed
-
-        campaign = self.bot.CampaignSQLHelper.select_campaign(campaign)
-        message = await context.guild.get_channel(self.bot.config["status_channel"]).send(
-            embed=(await create_status_message()))
-        self.bot.db.execute("UPDATE campaigns SET status_message = ? WHERE id = ?", (message.id, campaign.id))
-        self.bot.connection.commit()
-
     @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
-    @commands.command()
-    async def set_player_count(self, context: commands.Context, count: int, campaign: Union[int, str]):
+    @commands.command()  # todo: make command args consistent with every other command
+    async def set_max_player_count_command(self, context: commands.Context, count: int, campaign: Union[int, str]):
+        await self.set_max_player_count(context.channel, campaign, count)
+
+    async def set_max_player_count(self, channel: discord.TextChannel, campaign: int, count: int):
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign)
         commit = self.bot.CampaignSQLHelper.set_max_players(campaign, count)
         if commit:
             self.bot.connection.commit()
-            #await self.update_status(campaign)
-            await context.send(f"Set max players for {campaign.name} to {count}.")
+            await channel.send(f"Set max players for {campaign.name} to {count}.")
         else:
-            await context.send("An unknown error occurred.")
+            await channel.send("An unknown error occurred.")
 
     @commands.has_any_role(1050188024287338567)  # dev
     @commands.command()
@@ -434,7 +273,7 @@ class CampaignPlayerManager(commands.Cog):
     @commands.command()
     async def handle_waitlist(self, context: commands.Context, campaign: Union[int, str]):
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign)
-        if context.author.id != campaign.dm and not context.author.guild_permissions.administrator:
+        if context.author.id != campaign.dm and not context.author.guild_permissions.administrator and self.bot.config["developer_role"] not in [i.id for i in context.author.roles]:
             await context.send("You are not the DM of this campaign.")
             return
         waitlisted_players = self.bot.CampaignSQLHelper.get_waitlist(campaign)

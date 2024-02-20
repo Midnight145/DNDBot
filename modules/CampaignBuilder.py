@@ -18,17 +18,13 @@ class CampaignBuilder(commands.Cog):
     def __init__(self, bot: 'DNDBot'):
         self.bot = bot
 
-    async def create_campaign(self, guild: discord.Guild, name: str, dm: discord.Member, announce=True) -> CampaignInfo:
+    # noinspection PyMethodMayBeStatic
+    async def create_campaign(self, guild: discord.Guild, name: str, dm: discord.Member) -> CampaignInfo:
         """
         Creates all the necessary channels when creating a new campaign
         :param guild: Guild to create campaign in
         :param name: Campaign name
         :param dm: Campaign dm
-        :param min_players: Minimum players
-        :param max_players: Maximum players
-        :param location: Campaign location
-        :param playstyle: DM playstyle
-        :param info_message: Campaign info message
         :return: CampaignInfo object
         """
 
@@ -56,13 +52,6 @@ class CampaignBuilder(commands.Cog):
         category = await guild.create_category(name, overwrites=overwrites)
         retval.category = category.id
 
-        # Fetch "Information" category
-        # info_category = guild.get_channel(self.bot.config["info_category"])
-        # # Create campaign's information channel and add to CampaignInfo
-        # if announce:
-        #     global_channel = await info_category.create_text_channel(name=name)
-        #     retval.information_channel = global_channel.id
-        # else:
         retval.information_channel = 0
         # Create campaign announcement channel
         announcements = await category.create_text_channel(name="announcements")
@@ -86,12 +75,6 @@ class CampaignBuilder(commands.Cog):
         # Create campaign voice channel
         await category.create_voice_channel(name=name)
 
-        # if announce:
-        # # Create campaign status message
-        #     status_message = await self.bot.get_channel(self.bot.config["status_channel"]).send(
-        #         embed=self.create_status_message(retval))
-        #     retval.status_message = status_message.id
-        # else:
         retval.status_message = 0
         return retval
 
@@ -102,15 +85,9 @@ class CampaignBuilder(commands.Cog):
         guild = category.guild
         # fetch global campaign information channel
         global_channel = self.bot.get_channel(info.information_channel)
-        # move channel to archive category
-        # try:
-        #     await global_channel.move(category=category.guild.get_channel(self.bot.config["archive_category"]),
-        #                               reason="campaign deleted", end=True, sync_permissions=True)
-        # except:
-        #     await global_channel.delete()
         try:
             await global_channel.delete()
-        except:
+        except Exception:
             pass
         # delete channels
         for channel in category.channels:
