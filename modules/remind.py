@@ -4,12 +4,13 @@ import re
 import time
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 
 class Remind(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.tasks = []
 
     @commands.command()
     async def remind(self, context: commands.Context, _time, *, phrase):
@@ -39,11 +40,43 @@ class Remind(commands.Cog):
         self.bot.db.execute("DELETE FROM reminders WHERE jump_url = ?", (context.message.jump_url,))
         self.bot.connection.commit()
 
+    @commands.command()
+    async def reminders(self, context: commands.Context):
+        reminders = self.bot.db.execute("SELECT * FROM reminders WHERE user_id = ?", (context.author.id,)).fetchall()
+        if len(reminders) == 0:
+            await context.send("You have no reminders!")
+            return
+        embed = discord.Embed(title="Reminders", color=discord.Color.from_rgb(255, 255, 255))
+        for reminder in reminders:
+            embed.add_field(name=f"ID: {reminder['id']} -- {reminder['phrase']}",
+                            value=f"Time: {datetime.datetime.fromtimestamp(reminder['time'], datetime.timezone.utc).strftime('%m/%d/%Y %H:%M:%S')}",
+                            inline=False)
+        await context.send(embed=embed)
+
+    @commands.command()
+    async def delete_reminder(self, context: commands.Context, reminder_id):
+        reminder = self.bot.db.execute("SELECT * FROM reminders WHERE id = ?", (reminder_id,)).fetchone()
+        if reminder is None:
+            await context.send("Reminder not found!")
+            return
+        if reminder["user_id"] != context.author.id:
+            await context.send("You can only delete your own reminders!")
+            return
+        self.bot.db.execute("DELETE FROM reminders WHERE id = ?", (reminder_id,))
+        self.bot.connection.commit()
+        await context.send("Reminder deleted!")
+
+    # noinspection PyAsyncCall
     async def cog_load(self):
         reminders = self.bot.db.execute("SELECT * FROM reminders").fetchall()
         for reminder in reminders:
-            asyncio.create_task(self.remind_task(reminder))
+            self.tasks.append(asyncio.create_task(self.remind_task(reminder)))
         print("Done loading reminders!")
+
+    async def cog_unload(self):
+        for task in self.tasks:
+            task.cancel()
+        print("Done unloading reminders!")
 
     async def remind_task(self, reminder):
         user = self.bot.get_user(reminder["user_id"])
