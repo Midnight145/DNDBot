@@ -7,7 +7,7 @@ import sys
 import discord
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
-from starlette.responses import JSONResponse
+from fastapi.responses import JSONResponse
 
 from DNDBot import DNDBot
 from modules.api import api
@@ -51,7 +51,8 @@ connection = sqlite3.connect(config["database_file"], check_same_thread=False)
 connection.row_factory = dict_factory
 db = connection.cursor()
 db.execute("CREATE TABLE IF NOT EXISTS campaigns (id INTEGER PRIMARY KEY, name TEXT, dm INTEGER, role INTEGER, "
-           "category INTEGER, information_channel INTEGER, min_players INTEGER, max_players INTEGER, current_players INTEGER, status_message INTEGER)")
+           "category INTEGER, information_channel INTEGER, min_players INTEGER, max_players INTEGER, current_players "
+           "INTEGER, status_message INTEGER)")
 db.execute("CREATE TABLE IF NOT EXISTS warns (id INTEGER PRIMARY KEY, member INTEGER, reason TEXT)")
 connection.commit()
 
@@ -65,7 +66,8 @@ DNDBot.instance = bot
 async def on_ready():
     print("Logged in")
     for i in bot.all_cogs:
-        if i in bot.loaded_cogs: continue
+        if i in bot.loaded_cogs:
+            continue
         await bot.load_extension(i)
         bot.loaded_cogs.append(i)
     print("All cogs loaded successfully!")

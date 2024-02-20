@@ -2,12 +2,13 @@ import sqlite3
 
 from discord.ext import commands
 
-from modules import CampaignBuilder, CampaignSQLHelper, CampaignPlayerManager
+from modules import CampaignBuilder, CampaignSQLHelper, CampaignPlayerManager, CampaignManager
 
 
 class DNDBot(commands.Bot):
     instance: 'DNDBot' = None
 
+    # noinspection PyTypeChecker
     def __init__(self, db: sqlite3.Cursor, connection: sqlite3.Connection, config: dict, **kwargs):
         super().__init__(**kwargs)
         self.db = db
@@ -23,4 +24,5 @@ class DNDBot(commands.Bot):
         self.CampaignBuilder = CampaignBuilder(self)
         self.CampaignSQLHelper = CampaignSQLHelper(self)
         self.CampaignPlayerManager: CampaignPlayerManager = None
+        self.CampaignManager: CampaignManager = None
         self.campaign_creation_callback: callable = None

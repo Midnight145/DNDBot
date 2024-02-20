@@ -1,6 +1,6 @@
 {
   "prefix": "bot prefix",
-  "server": server_id
+  "server": server_id,
   "status": "bot status",
   "player_logs": player_log_channel_id,
   "database_file": "database name",
