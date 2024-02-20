@@ -322,6 +322,17 @@ class CampaignPlayerManager(commands.Cog):
             await self.update_player_count(context, i['id'])
             await asyncio.sleep(.5)
 
+    @commands.command()
+    async def remove_waitlisted_player(self, context: commands.Context, member: discord.Member,
+                                       campaign: Union[int, str]):
+        campaign = self.bot.CampaignSQLHelper.select_campaign(campaign)
+        commit = self.bot.CampaignSQLHelper.remove_waitlisted_player(campaign, member)
+        if commit:
+            await context.send(f"Removed {member.display_name} from the waitlist for {campaign.name}.")
+            self.bot.connection.commit()
+        else:
+            await context.send("An unknown error occurred.")
+
 
 async def setup(bot):
     await bot.add_cog(CampaignPlayerManager(bot))

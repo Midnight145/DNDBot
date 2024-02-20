@@ -1,7 +1,5 @@
 import sqlite3
-import string
 import traceback
-import typing
 from typing import Union, Optional, TYPE_CHECKING
 
 import discord
@@ -34,8 +32,8 @@ class CampaignSQLHelper:
             self.bot.db.execute(
                 f"INSERT INTO campaigns (name, dm, role, category, information_channel, min_players, max_players, "
                 f"current_players, status_message, location, playstyle, session_length, meeting_frequency, "
-                f"meeting_day, meeting_time, meeting_date, system, new_player_friendly, timestamp, paused, info_message) VALUES "
-                f"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                f"meeting_day, meeting_time, meeting_date, system, new_player_friendly, timestamp, paused, "
+                f"info_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (vals.name, vals.dm, vals.role, vals.category, vals.information_channel, vals.min_players,
                  vals.max_players, vals.current_players, vals.status_message, vals.location, vals.playstyle,
                  vals.session_length, vals.meeting_frequency, vals.meeting_day, vals.meeting_time, vals.meeting_date,
@@ -82,7 +80,7 @@ class CampaignSQLHelper:
             traceback.print_exc()
             return False
 
-    def set_campaign_status(self, campaign: CampaignInfo, status: typing.Literal[0, 1]) -> bool:
+    def set_campaign_status(self, campaign: CampaignInfo, status: int) -> bool:
         try:
             self.bot.db.execute(f"UPDATE campaigns SET locked = {status} WHERE id = {campaign.id}")
             return True
@@ -138,7 +136,8 @@ class CampaignSQLHelper:
 
     def add_player(self, campaign: CampaignInfo, player: discord.Member):
         try:
-            is_waitlisted = self.bot.db.execute(f"SELECT waitlisted FROM players WHERE id = ? AND campaign = ?", (player.id, campaign.id)).fetchone()
+            is_waitlisted = self.bot.db.execute(f"SELECT waitlisted FROM players WHERE id = ? AND campaign = ?",
+                                                (player.id, campaign.id)).fetchone()
             if is_waitlisted:
                 self.__increment_players(campaign, 1)
                 return self.unwaitlist(campaign, player)
@@ -188,6 +187,14 @@ class CampaignSQLHelper:
             traceback.print_exc()
             return False
 
+    def remove_waitlisted_player(self, campaign: CampaignInfo, player: Union[discord.Member, FakeMember]):
+        try:
+            self.bot.db.execute(f"DELETE FROM players WHERE id = {player.id} AND campaign = {campaign.id}")
+            return True
+        except Exception:
+            traceback.print_exc()
+            return False
+
     def set_max_players(self, campaign: CampaignInfo, amount: int):
         try:
             self.bot.db.execute(f"UPDATE campaigns SET max_players = {amount} WHERE id= {campaign.id}")
@@ -214,6 +221,9 @@ class CampaignSQLHelper:
             traceback.print_exc()
             return None
 
+    def get_waitlisted_players(self, campaign: CampaignInfo):
+        return self.get_waitlist(campaign)
+
     def get_players(self, campaign: CampaignInfo):
         try:
             return self.bot.db.execute("SELECT id FROM "
@@ -221,3 +231,27 @@ class CampaignSQLHelper:
         except Exception:
             traceback.print_exc()
             return None
+
+    def set_current_player_count(self, campaign: CampaignInfo, amount: int):
+        try:
+            self.bot.db.execute(f"UPDATE campaigns SET current_players = {amount} WHERE id= {campaign.id}")
+            return True
+        except Exception:
+            traceback.print_exc()
+            return False
+
+    def pause_campaign(self, campaign: CampaignInfo):
+        try:
+            self.bot.db.execute(f"UPDATE campaigns SET paused = 1 WHERE id= {campaign.id}")
+            return True
+        except Exception:
+            traceback.print_exc()
+            return False
+
+    def resume_campaign(self, campaign: CampaignInfo):
+        try:
+            self.bot.db.execute(f"UPDATE campaigns SET paused = 0 WHERE id= {campaign.id}")
+            return True
+        except Exception:
+            traceback.print_exc()
+            return False
