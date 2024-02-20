@@ -1,7 +1,7 @@
-from discord.ext import commands
-import discord
-import datetime
 import io
+
+import discord
+from discord.ext import commands
 
 nl = "\n"
 
@@ -21,7 +21,8 @@ class Member(commands.Cog):
             timestamp=discord.utils.utcnow(),
             color=discord.Color.from_rgb(5, 110, 247)
         )
-        embed.add_field(name="Creation Date", value=f'{member.created_at.strftime("%a %b %d %H:%M:%S")}\n{days_ago.days} days ago', inline=False)
+        embed.add_field(name="Creation Date", value=f'{member.created_at.strftime("%a %b %d %H:%M:%S")}\n'
+                                                    f'{days_ago.days} days ago', inline=False)
 
         embed.set_image(url=member.display_avatar.replace(format='png'))
         embed.set_footer(text=f'There are now {member.guild.member_count} members')
@@ -111,7 +112,7 @@ class Member(commands.Cog):
                 embed.add_field(name="Roles Removed", value=" ".join([i.mention for i in removed_roles]), inline=False)
             embed.set_author(name=before, icon_url=before.display_avatar.replace(format='png'))
             embed.add_field(name="Change made by:",
-                            value=f'{str(before) if reason == False else str(audit.user) + (" because " + audit.reason if audit.reason is not None else "")}',
+                            value=f'{str(before) if not reason else str(audit.user) + (" because " + audit.reason if audit.reason is not None else "")}',
                             inline=False)
 
             if not len(embed) >= 2000:

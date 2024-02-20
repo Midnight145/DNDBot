@@ -1,8 +1,8 @@
+import os
+
 import discord
 from columnar import columnar
 from discord.ext import commands
-import datetime
-import os
 
 
 class Text(commands.Cog):
@@ -44,9 +44,16 @@ class Text(commands.Cog):
                     \n**Content:** {message.content}',
             color=discord.Color.from_rgb(255, 0, 0),
             timestamp=discord.utils.utcnow())
-        embed.set_author(name=f"{str(message.author)} ({message.author.id})", icon_url=message.author.display_avatar.url)
+        embed.set_author(name=f"{str(message.author)} ({message.author.id})",
+                         icon_url=message.author.display_avatar.url)
         channel = message.guild.get_channel(self.channel)
-        files = [(await i.to_file()) for i in message.attachments]
+        files = []
+        for i in message.attachments:
+            try:
+                file = await i.to_file()
+                files.append(file)
+            except discord.HTTPException:
+                continue
         await channel.send(embed=embed, files=files)
 
 
