@@ -1,3 +1,4 @@
+import enum
 import typing
 
 from pydantic import BaseModel
@@ -109,12 +110,43 @@ class CampaignApplication(BaseModel):
     unt_email: typing.Optional[str]
 
 
+class CampaignFetchMany(BaseModel):
+    campaign_ids: list[int]
+
+
+class CampaignAction(enum.Enum):
+    leave = "Leave a campaign as a player"
+    end = "End a campaign as a Dungeon Master"
+    pause = "Pause a campaign as a Dungeon Master"
+    resume = "Resume a campaign as a Dungeon Master"
+    lock = "Lock a campaign as a Dungeon Master"
+    unlock = "Unlock a campaign as a Dungeon Master"
+    update = "Update Max Player Count as a Dungeon Master"
+
+
 class CampaignActionRequest(BaseModel):
     first_name: str
     last_name: str
-    discord_tag: str
-    campaign_name: str
-    action: str
+    id: int
+    action: CampaignAction
     reasons: typing.Optional[list[str]]
     elaboration: typing.Optional[str]
     new_player_count: typing.Optional[int]
+    campaign_name: str
+
+
+class UserCreationRequest(BaseModel):
+    first_name: str
+    last_name: str
+    id: int
+    unt_email: typing.Optional[str]
+    unt_student: bool
+    playstyle: typing.Optional[str] = ""
+    bio: typing.Optional[str] = ""
+    pronouns: typing.Optional[str] = ""
+    image: typing.Optional[str] = ""
+    position: typing.Optional[str] = ""
+
+
+class UserUpdateRequest(UserCreationRequest):
+    pass

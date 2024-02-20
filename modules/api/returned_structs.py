@@ -29,7 +29,8 @@ class CampaignInfo:
     :param meeting_date: The campaign's meeting date, used for one-shot campaigns
     :param system: The campaign's system
     :param new_player_friendly: Whether the campaign is new player friendly
-    :param timestamp: When the campaign was created
+    :param paused: Whether the campaign is paused
+    :param date_created: When the campaign was created
     :param players: List of players
     :param waitlist: List of waitlisted players
     """
@@ -57,7 +58,7 @@ class CampaignInfo:
     meeting_date: str = ""
     system: str = ""
     new_player_friendly: str = ""
-    timestamp: int = 0
+    date_created: int = 0
     paused: int = 0
     players: list[int] = None
     waitlist: list[int] = None
@@ -83,11 +84,16 @@ class UserInfo:
     :param campaigns_player: List of campaigns the user is a player in
     :param campaigns_dm: List of campaigns the user is a DM in
     :param warnings: List of warnings. Keys are the warning IDs, values are the warning reasons
+    :param bio: User's bio
+    :param pronouns: User's pronouns
+    :param image: User's image
+    :param position: User's position
     """
     id: int = 0
     name: str = ""
     discriminator: str = ""
     nickname: str = ""
+    in_discord: bool = False
     officer: bool = False
     developer: bool = False
     verified: bool = False
@@ -100,6 +106,15 @@ class UserInfo:
     campaigns_player: list[int] = None
     campaigns_dm: list[int] = None
     warnings: dict[str, str] = None  # json doesn't support int keys, so you have to typecast to int before use
+    first_name: str = ""
+    last_name: str = ""
+    unt_email: str = ""
+    unt_student: bool = False
+    playstyle: str = ""
+    bio: str = ""
+    pronouns: str = ""
+    image: str = ""
+    position: str = ""
 
 
 def generate_struct(dict_: dict, cls: type):
