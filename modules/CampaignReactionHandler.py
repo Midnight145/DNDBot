@@ -1,14 +1,15 @@
 import datetime
 import re
-from enum import Enum, IntEnum
-from typing import TYPE_CHECKING
+import typing
+from enum import IntEnum
+from typing import TYPE_CHECKING, Callable, Awaitable
 
 import discord
 from discord.ext import commands
 
 from . import CampaignInfo
 from .CampaignBuilder import verification_denied
-from .api import api
+from .api.CampaignActionHandler import ActionHandler
 
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
     from ..DNDBot import DNDBot
@@ -64,7 +65,6 @@ class CampaignReactionHandler(commands.Cog):
             session_length = 14
             min_players = 15
             max_players = 16
-
 
         if payload.user_id == self.bot.user.id:
             return
@@ -123,7 +123,7 @@ class CampaignReactionHandler(commands.Cog):
                     dm = channel.guild.get_member(int(embed.fields[FieldValuesWebsite.discord_id].value))
                     print(dm)
                     campaign_info = await self.bot.CampaignBuilder.create_campaign(
-                        channel.guild, embed.fields[FieldValuesWebsite.campaign_name].value, dm, announce=False)
+                        channel.guild, embed.fields[FieldValuesWebsite.campaign_name].value, dm)
 
                     campaign_info.min_players = int(embed.fields[FieldValuesWebsite.min_players].value)
                     campaign_info.max_players = int(embed.fields[FieldValuesWebsite.max_players].value)
@@ -179,6 +179,15 @@ class CampaignReactionHandler(commands.Cog):
                 print("DM receipt denied")
                 await message.delete()
 
+        if channel.id == self.bot.config["campaign_action_channel"]:
+            success = await self.handle_campaign_action(message, payload)
+            if success is None:
+                return
+            if not success:
+                await message.remove_reaction(payload.emoji, payload.member)
+            else:
+                await message.delete()
+
     async def verify(self, member: discord.Member) -> bool:
         """
         :param member: Member to be verified
@@ -199,14 +208,10 @@ class CampaignReactionHandler(commands.Cog):
         try:
             await member.send(embed=embed)
         except discord.Forbidden:
-            await self.bot.get_channel(self.bot.config["verification_channel"]).send(f"{member.mention}: I was unable "
-                                                                                     f"to DM you. Please open your "
-                                                                                     f"DMs to this server, "
-                                                                                     f"as I will send campaign "
-                                                                                     f"updates via DM in the future. "
-                                                                                     f"Once you have done that, "
-                                                                                     f"you will need to re-react to "
-                                                                                     f"the verification reaction.")
+            await self.bot.get_channel(self.bot.config["verification_channel"]).send(
+                f"{member.mention}: I was unable to DM you. Please open your DMs to this server, as I will send "
+                f"campaign updates via DM in the future. Once you have done that, you will need to re-react to the "
+                f"verification reaction.")
         return False
 
     async def approve_player(self, message: discord.Message, member: discord.Member, reactor: discord.Member):
@@ -240,7 +245,6 @@ class CampaignReactionHandler(commands.Cog):
             else:
                 await message.channel.send("An unknown error occurred.")
                 return
-        #await self.bot.CampaignPlayerManager.update_status(campaign)
 
     async def deny_player(self, message: discord.Message, member: discord.Member, reactor: discord.Member) -> None:
         """
@@ -260,8 +264,11 @@ class CampaignReactionHandler(commands.Cog):
             return
 
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
-        await member.send(f"You have been denied from {campaign_name}. This is an automated message. If you believe "
-                          f"this to be a mistake, please contact the Campaign Master.")
+        try:
+            await member.send(f"You have been denied from {campaign_name}. This is an automated message. If you believe "
+                              f"this to be a mistake, please contact the Campaign Master.")
+        except discord.errors.Forbidden:
+            await channel.send(f"{member.mention} has their DMs closed, unable to notify them.")
         await message.delete()
         await channel.send(f"{member.mention} application for the campaign {campaign.name} has been denied by the DM.")
 
@@ -285,7 +292,7 @@ class CampaignReactionHandler(commands.Cog):
 
     async def handle_waitlist(self, message, payload: discord.RawReactionActionEvent):
         """
-        :param message: Message retrieved from reaction payload
+        :param message: Message retrieved from payload
         :param payload: Reaction payload
         :return: None
         """
@@ -299,7 +306,6 @@ class CampaignReactionHandler(commands.Cog):
 
             await to_react.add_reaction("✅")
             await to_react.add_reaction("❌")
-            #await self.bot.CampaignPlayerManager.update_status(campaign)
 
         embed = message.embeds[0]
         discord_id = int(embed.fields[4].value)
@@ -354,9 +360,6 @@ class CampaignReactionHandler(commands.Cog):
         else:
             await message.channel.send("An unknown error occurred.")
             return
-        # await message.clear_reaction("✅")
-        # await message.clear_reaction("❌")
-        #await self.bot.CampaignPlayerManager.update_status(campaign)
 
     async def deny_waitlisted_player(self, message: discord.Message, member: discord.Member, reactor: discord.Member):
         """
@@ -389,6 +392,33 @@ class CampaignReactionHandler(commands.Cog):
                                    f"from the waitlist for {campaign.name}.")
         except discord.errors.Forbidden:
             pass
+
+    async def handle_campaign_action(self, message: discord.Message, payload: discord.RawReactionActionEvent) -> typing.Optional[bool]:
+        """
+        Handles campaign actions retrieved from the API
+        :param message: Message retrieved from payload
+        :param payload: Reaction payload
+        :return: Whether the action was successful or not
+        """
+        if not message.embeds:
+            return False
+        embed = message.embeds[0]
+        reactor = message.guild.get_member(payload.user_id)
+        if self.bot.config["admin_role"] not in [role.id for role in reactor.roles]:
+            return False
+        if "submission" in embed.title.lower():
+            return
+        if payload.emoji == "❌":
+            await message.delete()
+            return True
+        elif payload.emoji == "✅":
+            regex = re.compile(r"(\w+) \w+$")  # hacky way to get the action from the title
+            action = regex.search(embed.title).group(1).lower()
+            campaign_name = embed.fields[3].value
+            campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
+            func: Callable[['DNDBot', discord.TextChannel, int, discord.Embed], Awaitable[bool]] = (
+                getattr(ActionHandler, action))  # wow, this is a hack
+            return await func(self.bot, message.channel, campaign.id, embed)
 
 
 async def setup(bot):
