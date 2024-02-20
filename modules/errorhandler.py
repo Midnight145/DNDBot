@@ -43,10 +43,9 @@ class ErrorHandler(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(self, context: commands.Context, error: commands.errors.CommandError):
-        if type(error) == commands.CommandNotFound:
+        if isinstance(error, commands.CommandNotFound):
             return
-        elif type(error) == commands.MissingRequiredArgument:
-            error: commands.MissingRequiredArgument
+        elif isinstance(error, commands.MissingRequiredArgument):
             await context.send(f"Missing required argument: {error.param}")
             return
         err_code = 255

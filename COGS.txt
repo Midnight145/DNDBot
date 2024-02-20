@@ -10,3 +10,4 @@ modules.remind
 logs.member
 logs.text
 jishaku
+modules.scheduler

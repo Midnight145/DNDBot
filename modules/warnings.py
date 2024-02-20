@@ -23,7 +23,10 @@ class Warnings(commands.Cog):
 
         if context.channel.id != self.bot.config["warnings_channel"]:
             await (context.guild.get_channel(self.bot.config["warnings_channel"])).send(embed=embed)
-
+        try:
+            await member.send(embed=embed)
+        except discord.Forbidden:
+            await context.send(f"Error in sending message to {member.mention}: Forbidden")
         await context.message.delete()
 
     @commands.command(aliases=["warnings"])

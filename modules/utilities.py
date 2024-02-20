@@ -62,11 +62,12 @@ class Utilities(commands.Cog):
         self.bot.update_config()
 
     @commands.command(aliases=["kill", "stop"], help="Kills the bot")
-    @commands.is_owner()
+    # @commands.is_owner()
     async def die(self, context):
-        await context.send("Bot shutting down...")
-        self.bot.db.close()
-        await self.bot.close()
+        if context.author.id == 613371584295469084 or context.author.id == 656991495806779427:
+            await context.send("Bot shutting down...")
+            self.bot.db.close()
+            await self.bot.close()
 
     @commands.command(help=f"Will unload a cog.\nUsage: {BOT_PREFIX}unload cogname", brief="Will unload a cog.",
                       aliases=['ul'])
@@ -296,6 +297,7 @@ class Utilities(commands.Cog):
             to_send += str(member) + f"  ({member.display_name})\n"
 
         await context.send(to_send)
+
 
 async def setup(bot):
     await bot.add_cog(Utilities(bot))
