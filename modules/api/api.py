@@ -23,6 +23,90 @@ def init_guild():
         guild = DNDBot.instance.get_guild(DNDBot.instance.config["server"])
 
 
+async def get_user_helper(user_id: int) -> (str, int):
+    user = await guild.fetch_member(user_id)
+    user_info = DNDBot.instance.db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if user_info is None:
+        user_info = {"first_name": "", "last_name": "", "unt_email": "", "unt_student": 0, "playstyle": ""}
+
+    resp = UserInfo()
+    resp.id = user.id
+    resp.name = user.name
+    resp.discriminator = user.discriminator
+    resp.nickname = user.display_name
+    resp.campaigns_player = []
+    resp.campaigns_dm = []
+    resp.warnings = {}
+    resp.first_name = user_info["first_name"]
+    resp.last_name = user_info["last_name"]
+    resp.unt_email = user_info["unt_email"]
+    resp.unt_student = bool(user_info["unt_student"])
+    resp.playstyle = user_info["playstyle"]
+
+    res = DNDBot.instance.db.execute("select id, reason from warns where member = ?", (user.id,)).fetchall()
+    for i in res:
+        # resp["warnings"][str(i["id"])] = i["reason"]
+        resp.warnings[i["id"]] = i["reason"]
+
+    if user is None:
+        user = DNDBot.instance.get_user(user_id)
+        if user is None:
+            return json.dumps({"error": "User not found"}), 404
+
+        return json.dumps(resp.__dict__)
+        # resp = {"id": user.id, "name": user.name, "discriminator": user.discriminator, "nickname": user.display_name,
+        #         "in_discord": False, "officer": False, "developer": False, "verified": False, "guest": False,
+        #         "player": False, "dm": False, "banned_player": False, "banned_dm": False, "joined": "",
+        #         "campaigns_player": [], "campaigns_dm": [], "warnings": {}, "first_name": user_info["first_name"],
+        #         "last_name": user_info["last_name"], "unt_email": user_info["unt_email"],
+        #         "unt_student": bool(user_info["unt_student"]),
+        #         "playstyle": user_info["playstyle"], user_info["bio"]: "", user_info["pronouns"]: "",
+        #         user_info["image"]: "", user_info["position"]: ""
+        #         }
+        # return json.dumps(resp)
+
+    officer_role = guild.get_role(DNDBot.instance.config["officer_role"])
+    developer_role = guild.get_role(DNDBot.instance.config["developer_role"])
+    verified_role = guild.get_role(DNDBot.instance.config["verified_role"])
+    guest_role = guild.get_role(DNDBot.instance.config["guest_role"])
+    player_role = guild.get_role(DNDBot.instance.config["member_role"])
+    dm_role = guild.get_role(DNDBot.instance.config["dm_role"])
+    banned_player_role = guild.get_role(DNDBot.instance.config["banned_player_role"])
+    banned_dm_role = guild.get_role(DNDBot.instance.config["banned_dm_role"])
+
+    resp.in_discord = True
+    resp.officer = officer_role in user.roles
+    resp.developer = developer_role in user.roles
+    resp.verified = verified_role in user.roles
+    resp.guest = guest_role in user.roles
+    resp.player = player_role in user.roles
+    resp.dm = dm_role in user.roles
+    resp.banned_player = banned_player_role in user.roles
+    resp.banned_dm = banned_dm_role in user.roles
+    resp.joined = user.joined_at.isoformat()
+
+    # resp = {"id": user.id, "name": user.name, "discriminator": user.discriminator, "nickname": user.display_name,
+    #         "in_discord": True, "officer": officer_role in user.roles, "developer": developer_role in user.roles,
+    #         "verified": verified_role in user.roles, "guest": guest_role in user.roles,
+    #         "player": player_role in user.roles, "dm": dm_role in user.roles,
+    #         "banned_player": banned_player_role in user.roles, "banned_dm": banned_dm_role in user.roles,
+    #         "joined": user.joined_at.isoformat(), "campaigns_player": [], "campaigns_dm": [], "warnings": {},
+    #         "first_name": user_info["first_name"],
+    #         "last_name": user_info["last_name"], "unt_email": user_info["unt_email"],
+    #         "unt_student": bool(user_info["unt_student"]), "playstyle": user_info["playstyle"]}
+
+    res = DNDBot.instance.db.execute("select * from campaigns where dm = ?", (user.id,)).fetchall()
+    for i in res:
+        # resp["campaigns_dm"].append(i["id"])
+        resp.campaigns_dm.append(i["id"])
+    res = DNDBot.instance.db.execute("select * from players where id = ? and waitlisted = 0", (user.id,)).fetchall()
+    for i in res:
+        # resp["campaigns_player"].append(i["campaign"])
+        resp.campaigns_player.append(i["campaign"])
+
+    return json.dumps(resp.__dict__), 200
+
+
 @router.get("/images/{cid}")
 async def get_image(cid: str):
     with open(f"/home/ryan/Development/CAGBot/images/{cid}.png", "rb") as file:
@@ -229,98 +313,20 @@ async def apply_to_campaigns(auth: str, application: CampaignApplication, respon
     return json.dumps({"success": True})
 
 
+@router.get("/users/officers")
+@permissions(Permissions.USER_READ)
+async def get_officers(auth: str, response: Response):
+    init_guild()
+    members = [tuple(await get_user_helper(i.id))[0] for i in guild.get_role(DNDBot.instance.config["officer_role"]).members]
+    return json.dumps(members)
+
 @router.get("/users/{user_id}")
 @permissions(Permissions.USER_READ)
 async def get_user(user_id: int, auth: str, response: Response) -> str:
     init_guild()
-    user = await guild.fetch_member(user_id)
-    user_info = DNDBot.instance.db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-    if user_info is None:
-        user_info = {"first_name": "", "last_name": "", "unt_email": "", "unt_student": 0, "playstyle": ""}
-
-    resp = UserInfo()
-    resp.id = user.id
-    resp.name = user.name
-    resp.discriminator = user.discriminator
-    resp.nickname = user.display_name
-    resp.campaigns_player = []
-    resp.campaigns_dm = []
-    resp.warnings = {}
-    resp.first_name = user_info["first_name"]
-    resp.last_name = user_info["last_name"]
-    resp.unt_email = user_info["unt_email"]
-    resp.unt_student = bool(user_info["unt_student"])
-    resp.playstyle = user_info["playstyle"]
-
-    res = DNDBot.instance.db.execute("select id, reason from warns where member = ?", (user.id,)).fetchall()
-    for i in res:
-        # resp["warnings"][str(i["id"])] = i["reason"]
-        resp.warnings[i["id"]] = i["reason"]
-
-    if user is None:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        user = DNDBot.instance.get_user(user_id)
-        if user is None:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return json.dumps({"error": "User not found"})
-
-        return json.dumps(resp.__dict__)
-        # resp = {"id": user.id, "name": user.name, "discriminator": user.discriminator, "nickname": user.display_name,
-        #         "in_discord": False, "officer": False, "developer": False, "verified": False, "guest": False,
-        #         "player": False, "dm": False, "banned_player": False, "banned_dm": False, "joined": "",
-        #         "campaigns_player": [], "campaigns_dm": [], "warnings": {}, "first_name": user_info["first_name"],
-        #         "last_name": user_info["last_name"], "unt_email": user_info["unt_email"],
-        #         "unt_student": bool(user_info["unt_student"]),
-        #         "playstyle": user_info["playstyle"], user_info["bio"]: "", user_info["pronouns"]: "",
-        #         user_info["image"]: "", user_info["position"]: ""
-        #         }
-        # return json.dumps(resp)
-
-    officer_role = guild.get_role(DNDBot.instance.config["officer_role"])
-    developer_role = guild.get_role(DNDBot.instance.config["developer_role"])
-    verified_role = guild.get_role(DNDBot.instance.config["verified_role"])
-    guest_role = guild.get_role(DNDBot.instance.config["guest_role"])
-    player_role = guild.get_role(DNDBot.instance.config["member_role"])
-    dm_role = guild.get_role(DNDBot.instance.config["dm_role"])
-    banned_player_role = guild.get_role(DNDBot.instance.config["banned_player_role"])
-    banned_dm_role = guild.get_role(DNDBot.instance.config["banned_dm_role"])
-
-    resp.in_discord = True
-    resp.officer = officer_role in user.roles
-    resp.developer = developer_role in user.roles
-    resp.verified = verified_role in user.roles
-    resp.guest = guest_role in user.roles
-    resp.player = player_role in user.roles
-    resp.dm = dm_role in user.roles
-    resp.banned_player = banned_player_role in user.roles
-    resp.banned_dm = banned_dm_role in user.roles
-    resp.joined = user.joined_at.isoformat()
-
-    # resp = {"id": user.id, "name": user.name, "discriminator": user.discriminator, "nickname": user.display_name,
-    #         "in_discord": True, "officer": officer_role in user.roles, "developer": developer_role in user.roles,
-    #         "verified": verified_role in user.roles, "guest": guest_role in user.roles,
-    #         "player": player_role in user.roles, "dm": dm_role in user.roles,
-    #         "banned_player": banned_player_role in user.roles, "banned_dm": banned_dm_role in user.roles,
-    #         "joined": user.joined_at.isoformat(), "campaigns_player": [], "campaigns_dm": [], "warnings": {},
-    #         "first_name": user_info["first_name"],
-    #         "last_name": user_info["last_name"], "unt_email": user_info["unt_email"],
-    #         "unt_student": bool(user_info["unt_student"]), "playstyle": user_info["playstyle"]}
-
-    res = DNDBot.instance.db.execute("select * from campaigns where dm = ?", (user.id,)).fetchall()
-    for i in res:
-        # resp["campaigns_dm"].append(i["id"])
-        resp.campaigns_dm.append(i["id"])
-    res = DNDBot.instance.db.execute("select * from players where id = ? and waitlisted = 0", (user.id,)).fetchall()
-    for i in res:
-        # resp["campaigns_player"].append(i["campaign"])
-        resp.campaigns_player.append(i["campaign"])
-    print(resp)
-    with open("out.log", "w") as f:
-        # json.dump(resp, f)
-        json.dump(resp.__dict__, f)
-    # return json.dumps(resp)
-
-    return json.dumps(resp.__dict__)
+    resp, status_ = await get_user_helper(user_id)
+    response.status_code = status_
+    return resp
 
 
 @router.post("/users/{user_id}/update")
@@ -393,3 +399,5 @@ async def campaign_creation_callback(*args, campaign_info: CampaignInfo = None):
     await receipts.send(embed=embed)
 
     # await DNDBot.instance.CampaignPlayerManager.update_status(campaign_info)
+
+
