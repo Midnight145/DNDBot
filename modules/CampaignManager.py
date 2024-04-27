@@ -57,14 +57,15 @@ class CampaignManager(commands.Cog):
         if "\n" in info:
             info.replace("\n", """
 """)
-        campaign = self.CampaignSQLHelper.select_campaign(campaign)
-        commit = self.CampaignSQLHelper.set_campaign_info(campaign, info)
-        if commit:
-            self.bot.connection.commit()
-            # await self.bot.CampaignPlayerManager.update_status(campaign)
-            await context.send("Campaign info set.")
-        else:
-            await context.send("Error setting campaign info")
+        async with self.bot.mutex:
+            campaign = self.CampaignSQLHelper.select_campaign(campaign)
+            commit = self.CampaignSQLHelper.set_campaign_info(campaign, info)
+            if commit:
+                self.bot.connection.commit()
+                # await self.bot.CampaignPlayerManager.update_status(campaign)
+                await context.send("Campaign info set.")
+            else:
+                await context.send("Error setting campaign info")
 
     @commands.command()
     @deprecated
@@ -79,13 +80,14 @@ class CampaignManager(commands.Cog):
         if "\n" in value:
             value.replace("\n", """
 """)
-        campaign = self.CampaignSQLHelper.select_campaign(campaign)
-        commit = self.CampaignSQLHelper.set_campaign_field(campaign, field, value)
-        if commit:
-            self.bot.connection.commit()
-            # await self.bot.CampaignPlayerManager.update_status(campaign)
-        else:
-            await context.send("Error setting campaign field")
+        async with self.bot.mutex:
+            campaign = self.CampaignSQLHelper.select_campaign(campaign)
+            commit = self.CampaignSQLHelper.set_campaign_field(campaign, field, value)
+            if commit:
+                self.bot.connection.commit()
+                # await self.bot.CampaignPlayerManager.update_status(campaign)
+            else:
+                await context.send("Error setting campaign field")
 
     @commands.command(aliases=['delete_campaign'])
     @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
@@ -97,10 +99,25 @@ class CampaignManager(commands.Cog):
         :param reason: The reason the campaign was deleted, DM'd to the members of the campaign.
         :return: None
         """
-        await self.delete_campaign(context.channel, campaign, reason)
+        async with self.bot.mutex:
+            await context.send(f"Are you sure you want to delete campaign {campaign}? (yes/no)")
+            try:
+                message = await self.bot.wait_for("message", check=lambda m: m.author.id == context.author.id, timeout=60)
+            except asyncio.TimeoutError:
+                await context.send("Timed out.")
+                return
+            if message.content.lower() not in ["yes", "y"]:
+                await context.send("Cancelled.")
+                return
+            await context.send("Deleting campaign...")
+            await self.delete_campaign(context.channel, campaign, reason)
 
     async def delete_campaign(self, channel: discord.TextChannel, campaign: Union[int, str], reason="Campaign deleted"):
         resp = self.CampaignSQLHelper.select_campaign(campaign)
+        if resp is None:
+            await channel.send(f"Could not find campaign {campaign}")
+            return
+
         members = [i["id"] for i in self.CampaignSQLHelper.get_players(resp)]
 
         commit = self.CampaignSQLHelper.delete_campaign(campaign)
@@ -147,17 +164,17 @@ class CampaignManager(commands.Cog):
         :param name: New campaign name
         :return: None
         """
+        async with self.bot.mutex:
+            resp = self.CampaignSQLHelper.select_campaign(campaign)
+            commit = self.CampaignSQLHelper.rename_campaign(resp, name)
 
-        resp = self.CampaignSQLHelper.select_campaign(campaign)
-        commit = self.CampaignSQLHelper.rename_campaign(resp, name)
+            if commit:
+                await context.send(f"Campaign \"{resp.name}\" renamed to \"{name}\".")
+                self.bot.connection.commit()
 
-        if commit:
-            await context.send(f"Campaign \"{resp.name}\" renamed to \"{name}\".")
-            self.bot.connection.commit()
-
-        else:
-            await context.send(f"There was an error renaming \"{resp.name}\"")
-            await self.handle_error()
+            else:
+                await context.send(f"There was an error renaming \"{resp.name}\"")
+                await self.handle_error()
 
     @commands.command()
     async def message_players_campaign_deleted(self, context: commands.Context, role: discord.Role):
@@ -181,9 +198,10 @@ class CampaignManager(commands.Cog):
         :param campaign: Either campaign name or campaign ID
         :return: None
         """
-        if self.CampaignSQLHelper.delete_campaign(campaign):
-            await context.send(f"Campaign {campaign} deregistered.")
-            self.bot.connection.commit()
+        async with self.bot.mutex:
+            if self.CampaignSQLHelper.delete_campaign(campaign):
+                await context.send(f"Campaign {campaign} deregistered.")
+                self.bot.connection.commit()
 
     @commands.command()
     async def list_campaigns(self, context: commands.Context):
@@ -192,7 +210,8 @@ class CampaignManager(commands.Cog):
         :return: None
         """
         message_content = ""
-        resp = self.bot.db.execute(f"SELECT * FROM campaigns").fetchall()
+        async with self.bot.mutex:
+            resp = self.bot.db.execute(f"SELECT * FROM campaigns").fetchall()
         for row in resp:
             message_content += f"{row['id']}: {row['name']}, DM: {str(context.guild.get_member(row['dm']))}, " \
                                f"{row['current_players']}/{row['max_players']} {'Locked' if row['locked'] else ''}\n"
@@ -214,7 +233,8 @@ class CampaignManager(commands.Cog):
         :param campaign: Either campaign name or campaign ID
         :return: None
         """
-        await self.update_lock_status(context.channel, campaign, 1)
+        async with self.bot.mutex:
+            await self.update_lock_status(context.channel, campaign, 1)
 
     @commands.command(aliases=["unlock"])
     async def unlock_campaign(self, context: commands.Context, campaign: Union[int, str]):
@@ -223,7 +243,8 @@ class CampaignManager(commands.Cog):
         :param campaign: Either campaign name or campaign ID
         :return: None
         """
-        await self.update_lock_status(context.channel, campaign, 0)
+        async with self.bot.mutex:
+            await self.update_lock_status(context.channel, campaign, 0)
 
     async def update_lock_status(self, channel: discord.TextChannel, campaign: Union[int, str], status: int):
         campaign = self.CampaignSQLHelper.select_campaign(campaign)
@@ -238,19 +259,20 @@ class CampaignManager(commands.Cog):
 
     @commands.command()
     async def list_players(self, context: commands.Context, campaign: Union[int, str]):
-        campaign = self.CampaignSQLHelper.select_campaign(campaign)
-        players = self.CampaignSQLHelper.get_players(campaign)
-        if players is None:
-            await context.send("An error occurred.")
-            return
-        message = ""
-        for i in players:
-            if (member := context.guild.get_member(i["id"])) is not None:
-                message += f"{member.display_name} ({member.id})\n"
-            else:
-                message += f"Could not resolve user {i['id']} -- Perhaps they left?\n"
+        async with self.bot.mutex:
+            campaign = self.CampaignSQLHelper.select_campaign(campaign)
+            players = self.CampaignSQLHelper.get_players(campaign)
+            if players is None:
+                await context.send("An error occurred.")
+                return
+            message = ""
+            for i in players:
+                if (member := context.guild.get_member(i["id"])) is not None:
+                    message += f"{member.display_name} ({member.id})\n"
+                else:
+                    message += f"Could not resolve user {i['id']} -- Perhaps they left?\n"
 
-        await context.send(message)
+            await context.send(message)
 
     async def handle_error(self):
         exc_type, exc_name, exc_traceback = sys.exc_info()
@@ -268,52 +290,55 @@ class CampaignManager(commands.Cog):
     @commands.command()
     async def fix_perms(self, context: commands.Context, channel: typing.Union[discord.CategoryChannel,
                                                                                discord.TextChannel], campaign_id: int):
-        if isinstance(channel, discord.TextChannel):
-            channel = channel.category
-        guild = channel.guild
-        campaign = self.CampaignSQLHelper.select_campaign(campaign_id)
-        role = guild.get_role(campaign.role)
-        dm = guild.get_member(campaign.dm)
-        overwrites = {guild.default_role: discord.PermissionOverwrite(read_messages=False),
-                      role: discord.PermissionOverwrite(send_messages=True, read_messages=True),
-                      dm: discord.PermissionOverwrite(manage_channels=True, manage_permissions=True,
-                                                      send_messages=True, manage_messages=True)
-                      }
-        await channel.edit(overwrites=overwrites)
-        for i in channel.channels:
-            await i.edit(overwrites=overwrites)
-        await context.send(f"Permissions have been fixed for {campaign.name}")
+        async with self.bot.mutex:
+            if isinstance(channel, discord.TextChannel):
+                channel = channel.category
+            guild = channel.guild
+            campaign = self.CampaignSQLHelper.select_campaign(campaign_id)
+            role = guild.get_role(campaign.role)
+            dm = guild.get_member(campaign.dm)
+            overwrites = {guild.default_role: discord.PermissionOverwrite(read_messages=False),
+                          role: discord.PermissionOverwrite(send_messages=True, read_messages=True),
+                          dm: discord.PermissionOverwrite(manage_channels=True, manage_permissions=True,
+                                                          send_messages=True, manage_messages=True)
+                          }
+            await channel.edit(overwrites=overwrites)
+            for i in channel.channels:
+                await i.edit(overwrites=overwrites)
+            await context.send(f"Permissions have been fixed for {campaign.name}")
 
     @commands.command()
     async def update_campaign(self, context: commands.Context, campaign: int, *, kwargs):
-        campaign = self.CampaignSQLHelper.select_campaign(campaign)
-        kwargs = kwargs.replace("“", "\"").replace("”", "\"")  # replace smart quotes with normal quotes
-        args = shlex.split(kwargs)
-        print(args)
-        fields = []
-        values = []
-        for arg in args:
-            print(arg)
-            key, value = arg.split("=")
-            fields.append(key)
-            values.append(value)
-            self.CampaignSQLHelper.set_campaign_field(campaign, key, value)
-        self.bot.connection.commit()
-        await context.send(
-            "Campaign updated with\n" + "\n".join([f"{fields[i]}={values[i]}" for i in range(len(fields))]))
+        async with self.bot.mutex:
+            campaign = self.CampaignSQLHelper.select_campaign(campaign)
+            kwargs = kwargs.replace("“", "\"").replace("”", "\"")  # replace smart quotes with normal quotes
+            args = shlex.split(kwargs)
+            print(args)
+            fields = []
+            values = []
+            for arg in args:
+                print(arg)
+                key, value = arg.split("=")
+                fields.append(key)
+                values.append(value)
+                self.CampaignSQLHelper.set_campaign_field(campaign, key, value)
+            self.bot.connection.commit()
+            await context.send(
+                "Campaign updated with\n" + "\n".join([f"{fields[i]}={values[i]}" for i in range(len(fields))]))
 
     @commands.command()
     async def verify_dms(self, context: commands.Context):
-        async with context.typing():
-            response = ""
-            campaigns = self.CampaignSQLHelper.get_campaigns()
-            for campaign in campaigns:
-                dm = context.guild.get_member(campaign["dm"])
-                if dm is None:
-                    response += f"Could not resolve user {campaign['dm']} for campaign {campaign['name']}\n"
-                # else:
-                # response += f"Resolved user {dm.name} for campaign {campaign['name']}\n"
-            await context.send(response)
+        async with self.bot.mutex:
+            async with context.typing():
+                response = ""
+                campaigns = self.CampaignSQLHelper.get_campaigns()
+                for campaign in campaigns:
+                    dm = context.guild.get_member(campaign["dm"])
+                    if dm is None:
+                        response += f"Could not resolve user {campaign['dm']} for campaign {campaign['name']}\n"
+                    # else:
+                    # response += f"Resolved user {dm.name} for campaign {campaign['name']}\n"
+                await context.send(response)
 
 
 async def setup(bot):

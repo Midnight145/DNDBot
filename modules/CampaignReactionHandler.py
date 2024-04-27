@@ -221,30 +221,31 @@ class CampaignReactionHandler(commands.Cog):
         :param reactor: Member who reacted, probably the DM
         :return: None
         """
-        message_embed = message.embeds[0]
-        campaign_name = message_embed.fields[0].value
-        campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
-        dm = await message.guild.fetch_member(campaign.dm)
+        async with self.bot.mutex:
+            message_embed = message.embeds[0]
+            campaign_name = message_embed.fields[0].value
+            campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
+            dm = await message.guild.fetch_member(campaign.dm)
 
-        channel = self.bot.get_channel(self.bot.config["player-sign-up"])
-        if reactor.id != dm.id:
-            return
-
-        if campaign.current_players >= campaign.max_players:
-            commit = self.bot.CampaignSQLHelper.waitlist_player(campaign, member)
-            if commit:
-                await channel.send(f"{member.mention} has been added to the campaign {campaign.name}'s waitlist")
-                await message.delete()
-                self.bot.connection.commit()
-            else:
-                await message.channel.send("An unknown error occurred while adding the player to the waitlist.")
-        else:
-            if await self.bot.CampaignPlayerManager.add_player(message.channel, member, campaign_name):
-                await channel.send(f"{member.mention} has been added to the campaign {campaign_name}!")
-                await message.delete()
-            else:
-                await message.channel.send("An unknown error occurred.")
+            channel = self.bot.get_channel(self.bot.config["player-sign-up"])
+            if reactor.id != dm.id:
                 return
+
+            if campaign.current_players >= campaign.max_players:
+                commit = self.bot.CampaignSQLHelper.waitlist_player(campaign, member)
+                if commit:
+                    await channel.send(f"{member.mention} has been added to the campaign {campaign.name}'s waitlist")
+                    await message.delete()
+                    self.bot.connection.commit()
+                else:
+                    await message.channel.send("An unknown error occurred while adding the player to the waitlist.")
+            else:
+                if await self.bot.CampaignPlayerManager.add_player(message.channel, member, campaign_name):
+                    await channel.send(f"{member.mention} has been added to the campaign {campaign_name}!")
+                    await message.delete()
+                else:
+                    await message.channel.send("An unknown error occurred.")
+                    return
 
     async def deny_player(self, message: discord.Message, member: discord.Member, reactor: discord.Member) -> None:
         """
@@ -253,24 +254,24 @@ class CampaignReactionHandler(commands.Cog):
         :param reactor: Member who reacted, probably the DM
         :return: None
         """
+        async with self.bot.mutex:
+            channel = self.bot.get_channel(self.bot.config["player-sign-up"])
+            message_embed = message.embeds[0]
+            campaign_name = message_embed.fields[0].value
+            campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
+            dm = await message.guild.fetch_member(campaign.dm)
 
-        channel = self.bot.get_channel(self.bot.config["player-sign-up"])
-        message_embed = message.embeds[0]
-        campaign_name = message_embed.fields[0].value
-        campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
-        dm = await message.guild.fetch_member(campaign.dm)
+            if reactor.id != dm.id:
+                return
 
-        if reactor.id != dm.id:
-            return
-
-        campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
-        try:
-            await member.send(f"You have been denied from {campaign_name}. This is an automated message. If you believe "
-                              f"this to be a mistake, please contact the Campaign Master.")
-        except discord.errors.Forbidden:
-            await channel.send(f"{member.mention} has their DMs closed, unable to notify them.")
-        await message.delete()
-        await channel.send(f"{member.mention} application for the campaign {campaign.name} has been denied by the DM.")
+            campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
+            try:
+                await member.send(f"You have been denied from {campaign_name}. This is an automated message. If you believe "
+                                  f"this to be a mistake, please contact the Campaign Master.")
+            except discord.errors.Forbidden:
+                await channel.send(f"{member.mention} has their DMs closed, unable to notify them.")
+            await message.delete()
+            await channel.send(f"{member.mention} application for the campaign {campaign.name} has been denied by the DM.")
 
     @staticmethod
     async def __create_waitlist_embed(member: discord.Member, campaign: CampaignInfo) -> discord.Embed:
@@ -306,24 +307,24 @@ class CampaignReactionHandler(commands.Cog):
 
             await to_react.add_reaction("✅")
             await to_react.add_reaction("❌")
+        async with self.bot.mutex:
+            embed = message.embeds[0]
+            discord_id = int(embed.fields[4].value)
+            member = await message.guild.fetch_member(discord_id)
+            if message.author.id != self.bot.user.id:  # if message author is not the bot
+                return
+            if payload.emoji.name == "✅":
+                await self.approve_waitlisted_player(message, member, payload.member)
 
-        embed = message.embeds[0]
-        discord_id = int(embed.fields[4].value)
-        member = await message.guild.fetch_member(discord_id)
-        if message.author.id != self.bot.user.id:  # if message author is not the bot
-            return
-        if payload.emoji.name == "✅":
-            await self.approve_waitlisted_player(message, member, payload.member)
-
-        elif payload.emoji.name == "❌":
-            await self.deny_waitlisted_player(message, member, payload.member)
-            campaign_name = embed.fields[0].value
-            campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
-            waitlisted_players = self.bot.CampaignSQLHelper.get_waitlisted_players(campaign)
-            waitlisted_players.sort(key=lambda x: x['pid'])
-            if len(waitlisted_players) > 0:
-                member = await message.guild.fetch_member(waitlisted_players[0]['id'])
-                await unwaitlist_apply()
+            elif payload.emoji.name == "❌":
+                await self.deny_waitlisted_player(message, member, payload.member)
+                campaign_name = embed.fields[0].value
+                campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
+                waitlisted_players = self.bot.CampaignSQLHelper.get_waitlisted_players(campaign)
+                waitlisted_players.sort(key=lambda x: x['pid'])
+                if len(waitlisted_players) > 0:
+                    member = await message.guild.fetch_member(waitlisted_players[0]['id'])
+                    await unwaitlist_apply()
 
     async def approve_waitlisted_player(self, message: discord.Message, member: discord.Member,
                                         reactor: discord.Member):
@@ -400,25 +401,26 @@ class CampaignReactionHandler(commands.Cog):
         :param payload: Reaction payload
         :return: Whether the action was successful or not
         """
-        if not message.embeds:
-            return False
-        embed = message.embeds[0]
-        reactor = message.guild.get_member(payload.user_id)
-        if self.bot.config["admin_role"] not in [role.id for role in reactor.roles]:
-            return False
-        if "submission" in embed.title.lower():
-            return
-        if payload.emoji == "❌":
-            await message.delete()
-            return True
-        elif payload.emoji == "✅":
-            regex = re.compile(r"(\w+) \w+$")  # hacky way to get the action from the title
-            action = regex.search(embed.title).group(1).lower()
-            campaign_name = embed.fields[3].value
-            campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
-            func: Callable[['DNDBot', discord.TextChannel, int, discord.Embed], Awaitable[bool]] = (
-                getattr(ActionHandler, action))  # wow, this is a hack
-            return await func(self.bot, message.channel, campaign.id, embed)
+        async with self.bot.mutex:
+            if not message.embeds:
+                return False
+            embed = message.embeds[0]
+            reactor = message.guild.get_member(payload.user_id)
+            if self.bot.config["admin_role"] not in [role.id for role in reactor.roles]:
+                return False
+            if "submission" in embed.title.lower():
+                return
+            if payload.emoji == "❌":
+                await message.delete()
+                return True
+            elif payload.emoji == "✅":
+                regex = re.compile(r"(\w+) \w+$")  # hacky way to get the action from the title
+                action = regex.search(embed.title).group(1).lower()
+                campaign_name = embed.fields[3].value
+                campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
+                func: Callable[['DNDBot', discord.TextChannel, int, discord.Embed], Awaitable[bool]] = (
+                    getattr(ActionHandler, action))  # wow, this is a hack
+                return await func(self.bot, message.channel, campaign.id, embed)
 
 
 async def setup(bot):

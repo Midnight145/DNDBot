@@ -1,6 +1,11 @@
+import asyncio
+import datetime
+import os
 import sqlite3
+import traceback
+import zipfile
 
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from modules import CampaignBuilder, CampaignSQLHelper, CampaignPlayerManager, CampaignManager
 
@@ -26,3 +31,32 @@ class DNDBot(commands.Bot):
         self.CampaignPlayerManager: CampaignPlayerManager = None
         self.CampaignManager: CampaignManager = None
         self.campaign_creation_callback: callable = None
+        self.backup_task.start()
+        self.mutex = asyncio.Lock()
+
+    @tasks.loop(hours=24)
+    async def backup_task(self):
+        await self.wait_until_ready()
+        await self.mutex.acquire()
+        self.connection.close()
+        try:
+            # if backups/ directory doesn't exist, create it
+            if not os.path.exists("backups"):
+                os.makedirs("backups")
+                # zip the database file
+            filename = ("backups/" + self.config["database_file"] + '-' +
+                        datetime.date.today().strftime("%Y-%m-%d") + ".zip")
+            with zipfile.ZipFile(filename, "w") as backup:
+                backup.write(self.config["database_file"], os.path.basename(self.config["database_file"]))
+        except Exception as e:
+            traceback.print_exc()
+        finally:
+            def dict_factory(cursor, row):
+                d = {}
+                for idx, col in enumerate(cursor.description):
+                    d[col[0]] = row[idx]
+                return d
+            self.connection = sqlite3.connect(self.config["database_file"], check_same_thread=False)
+            self.connection.row_factory = dict_factory
+            self.db = self.connection.cursor()
+            self.mutex.release()

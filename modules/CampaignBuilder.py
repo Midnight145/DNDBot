@@ -98,7 +98,6 @@ class CampaignBuilder(commands.Cog):
         campaign_role = category.guild.get_role(info.role)
         if campaign_role is None:
             return False
-
         resp = self.bot.CampaignSQLHelper.select_field("role")
         for member in campaign_role.members:
             member: discord.Member
@@ -129,7 +128,8 @@ class CampaignBuilder(commands.Cog):
     @commands.command()
     async def get_roles(self, context: commands.Context):
         message = ""
-        resp = self.bot.CampaignSQLHelper.select_field("role")
+        async with self.bot.mutex:
+            resp = self.bot.CampaignSQLHelper.select_field("role")
         for role_ in resp:
             role = context.guild.get_role(role_[0])
             if role is None:
