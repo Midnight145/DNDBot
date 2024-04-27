@@ -9,3 +9,6 @@ class FakeMember:
 
     async def add_roles(self, *roles):
         return
+
+    async def send(self, *args, **kwargs):
+        return
