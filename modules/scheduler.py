@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import time
 import typing
 import pytz
 
@@ -11,7 +12,7 @@ class Scheduler(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.bot.db.execute("CREATE TABLE IF NOT EXISTS schedule (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER,"
-                            " time INTEGER, repeat TEXT, channel_id INTEGER, message TEXT)")
+                            " time INTEGER, repeat TEXT, channel_id INTEGER, message TEXT, dst INTEGER DEFAULT 0)")
         self.bot.connection.commit()
         self.tasks = {}
 
@@ -34,8 +35,8 @@ class Scheduler(commands.Cog):
         datetime_ = datetime.datetime.combine(date, time_)
         localized = pytz.timezone('America/Chicago').localize(datetime_)
         time_value = localized.timestamp()
-        self.bot.db.execute("INSERT INTO schedule (user_id, channel_id, time, repeat, message) VALUES (?, ?, ?, ?, ?)",
-                            (context.author.id, channel.id, time_value, repeat, message))
+        self.bot.db.execute("INSERT INTO schedule (user_id, channel_id, time, repeat, message, dst) VALUES (?, ?, ?, ?, ?, ?)",
+                            (context.author.id, channel.id, time_value, repeat, message, time.daylight))
         self.bot.connection.commit()
 
         await context.send(f"Message scheduled for {day_sent} at {time_sent} {am_pm} in {channel.mention} with the message: {message}")
@@ -89,6 +90,10 @@ class Scheduler(commands.Cog):
         print("Done unloading messages!")
 
     async def message_task(self, message):
+        if message["dst"] != time.daylight:
+            message["time"] += 3600 if message["dst"] == 1 else -3600
+            self.bot.db.execute("UPDATE schedule SET time = ?, dst = ? WHERE id = ?",
+                                (message["time"], time.daylight, message["id"]))
         print("Starting message task for " + str(message['id']))
         print("Message Info: " + str(message))
         channel = self.bot.get_channel(message["channel_id"])
