@@ -150,3 +150,7 @@ class UserCreationRequest(BaseModel):
 
 class UserUpdateRequest(UserCreationRequest):
     pass
+
+
+class UserUpdateManyRequest(BaseModel):
+    users: typing.List[UserUpdateRequest]

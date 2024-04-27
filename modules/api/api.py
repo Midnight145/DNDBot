@@ -9,7 +9,8 @@ from DNDBot import DNDBot
 from modules.api.Permissions import permissions, Permissions
 from .CampaignActionHandler import ActionEmbedCreator
 from .returned_structs import UserInfo
-from .structs import CampaignApplication, PartialCampaignInfo, CampaignActionRequest, UserUpdateRequest
+from .structs import CampaignApplication, PartialCampaignInfo, CampaignActionRequest, UserUpdateRequest, \
+    UserUpdateManyRequest
 from .. import CampaignInfo
 
 router = APIRouter()
@@ -126,7 +127,8 @@ async def get_campaigns(auth: str, response: Response):
         else:
             val["dm_username"] = dm.name
             val["dm_nickname"] = dm.display_name
-        players = DNDBot.instance.db.execute(f"SELECT * FROM players WHERE campaign = ?", (val["id"],)).fetchall()
+        players = DNDBot.instance.db.execute(f"SELECT * FROM players WHERE campaign = ?",
+                                             (val["id"],)).fetchall()
         val["players"] = [i["id"] for i in players if i["waitlisted"] == 0]
         val["waitlist"] = [i["id"] for i in players if i["waitlisted"] == 1]
         val["date_created"] = val["timestamp"]
@@ -255,16 +257,6 @@ async def create_campaign(auth: str, campaign: PartialCampaignInfo, response: Re
     await message.add_reaction("✅")
     await message.add_reaction("❌")
 
-    # todo: make this consistent with the rest of the code, most args to create_campaign are unnecessary
-    # for attr in campaign.__dict__:
-    #     setattr(campaign_info, attr, getattr(campaign, attr))
-    #
-    # commit = DNDBot.instance.CampaignSQLHelper.create_campaign(campaign_info)
-    # if not commit:
-    #     response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-    #     return json.dumps({"error": "Failed to create campaign"})
-    # DNDBot.instance.connection.commit()
-
     return json.dumps({"success": True})
 
 
@@ -313,12 +305,48 @@ async def apply_to_campaigns(auth: str, application: CampaignApplication, respon
     return json.dumps({"success": True})
 
 
+async def update_user_helper(user_id: int, user: UserUpdateRequest):
+    exists = (await guild.fetch_member(user_id)) is None
+    if exists:
+        return json.dumps({"error": "User not found"}), 404
+    exists = DNDBot.instance.db.execute("SELECT * from USERS where id = ?", (user_id,)).fetchone()
+    if not exists:
+        DNDBot.instance.db.execute(
+            "INSERT INTO users (first_name, last_name, id, unt_email, unt_student, playstyle, bio, pronouns, "
+            "image, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (user.first_name, user.last_name, user.id,
+             user.unt_email, int(user.unt_student), user.playstyle, user.bio,
+             user.pronouns, user.image, user.position))
+    else:
+        DNDBot.instance.db.execute("UPDATE users SET first_name = ?, last_name = ?, id = ?, unt_email = ?, "
+                                   "unt_student = ?, playstyle = ?, bio = ?, pronouns = ?, image = ?, position = ? "
+                                   "WHERE id = ?",
+                                   (user.first_name, user.last_name, user.id,
+                                    user.unt_email, int(user.unt_student), user.playstyle, user.bio,
+                                    user.pronouns, user.image, user.position, user.id))
+    return json.dumps({"success": True}), 200
+
+
 @router.get("/users/officers")
 @permissions(Permissions.USER_READ)
 async def get_officers(auth: str, response: Response):
     init_guild()
-    members = [tuple(await get_user_helper(i.id))[0] for i in guild.get_role(DNDBot.instance.config["officer_role"]).members]
+    members = [tuple(await get_user_helper(i.id))[0] for i in
+               guild.get_role(DNDBot.instance.config["officer_role"]).members]
     return json.dumps(members)
+
+
+@router.post("/users/updatemany")
+@permissions(Permissions.USER_WRITE)
+async def user_update_many(auth: str, request: UserUpdateManyRequest,  response: Response):
+    init_guild()
+    for i in request.users:
+        ret, status_code = await get_user_helper(i.id)
+        if status_code != 200:
+            return ret, status_code
+    DNDBot.instance.connection.commit()
+    return json.dumps({"success": True})
+
 
 @router.get("/users/{user_id}")
 @permissions(Permissions.USER_READ)
@@ -333,23 +361,10 @@ async def get_user(user_id: int, auth: str, response: Response) -> str:
 @permissions(Permissions.USER_CREATE)
 async def update_user(user_id: int, auth: str, user: UserUpdateRequest, response: Response):
     init_guild()
-    exists = (await guild.fetch_member(user_id)) is None
-    if exists:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return json.dumps({"error": "User not found"})
-    exists = DNDBot.instance.db.execute("SELECT * from USERS where id = ?", (user_id,)).fetchone()
-    if not exists:
-        DNDBot.instance.db.execute(
-            "INSERT INTO users (first_name, last_name, id, unt_email, unt_student, playstyle, bio, pronouns, image,"
-            "position) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (user.first_name, user.last_name, user.id,
-             user.unt_email, int(user.unt_student), user.playstyle))
-    DNDBot.instance.db.execute("UPDATE users SET first_name = ?, last_name = ?, id = ?, unt_email = ?, "
-                               "unt_student = ?, playstyle = ?, bio = ?, pronouns = ?, image = ?, position = ? WHERE "
-                               "id = ?",
-                               (user.first_name, user.last_name, user.id,
-                                user.unt_email, int(user.unt_student), user.playstyle, user.bio,
-                                user.pronouns, user.image, user.position, user.id))
+    ret, status_ = await update_user_helper(user_id, user)
+    if ret:
+        response.status_code = status_
+        return ret
     DNDBot.instance.connection.commit()
 
 
@@ -377,7 +392,7 @@ async def get_user_warnings(user_id: int, auth: str, response: Response):
 async def campaign_creation_callback(*args, campaign_info: CampaignInfo = None):
     init_guild()
     name = campaign_info.name
-    dungeon_master = guild.get_member(campaign_info.dm)
+    dungeon_master = await guild.fetch_member(campaign_info.dm)
 
     DNDBot.instance.connection.commit()
     await (guild.get_channel(DNDBot.instance.config["notification_channel"])).send(
@@ -393,11 +408,7 @@ async def campaign_creation_callback(*args, campaign_info: CampaignInfo = None):
     receipts = guild.get_channel(DNDBot.instance.config["dm_receipts"])
     embed.add_field(name="DM", value=f"{str(dungeon_master)} ({dungeon_master.id})")
     embed.add_field(name="Role", value=str(guild.get_role(campaign_info.role)))
-    embed.add_field(name="Category", value="error" if campaign_info.category is None else str(
-        guild.get_channel(campaign_info.category).name))
+    embed.add_field(name="Category", value=str(
+        (await guild.fetch_channel(campaign_info.category)).name))
     embed.add_field(name="Max Players", value=f"{campaign_info.max_players}")
     await receipts.send(embed=embed)
-
-    # await DNDBot.instance.CampaignPlayerManager.update_status(campaign_info)
-
-
