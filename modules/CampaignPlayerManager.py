@@ -13,6 +13,8 @@ from .FakeMember import FakeMember
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
     from ..DNDBot import DNDBot
 
+from .Strings import Error, Confirmation
+
 
 def deprecated(func):
     @functools.wraps(func)
@@ -57,12 +59,7 @@ class CampaignPlayerManager(commands.Cog):
         else:
             commit = self.bot.CampaignSQLHelper.add_player(campaign, member)
         if commit:
-            try:
-                await member.send(f"{member.display_name}: This is a notification that you have been approved and "
-                                  f"added to a campaign. If you ever wish to leave the campaign, please use the Leave "
-                                  f"a Campaign form found in #how-to-join. Campaign: {campaign.name}.")
-            except (discord.Forbidden, discord.HTTPException):
-                pass
+            await self.bot.try_send_message(member, channel, Confirmation.CONFIRM_PLAYER_CAMPAIGN_ADD.format(member=member, campaign=campaign))
 
             await member.remove_roles(guest_role)
             await member.add_roles(member_role, campaign_role, player_role)
@@ -76,7 +73,7 @@ class CampaignPlayerManager(commands.Cog):
             # await self.update_status(campaign)
             return True
         else:
-            await channel.send("An unknown error occurred.")
+            await channel.send(Error.ERROR_UNK)
             return False
 
     @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
@@ -128,20 +125,9 @@ class CampaignPlayerManager(commands.Cog):
                 await member.remove_roles(member_role, player_role)
                 await member.add_roles(guest_role)
             await channel.send(f"{member.mention} has been removed from the campaign!")
-            try:
-                await member.send(f"{member.display_name}: This is a notification that you have been removed from the "
-                                  f"campaign {campaign.name}. Please contact the President or the Campaign Master if "
-                                  f"you think this was a mistake.")
-            except (discord.Forbidden, discord.HTTPException):
-                await channel.send("Unable to send removal message to player.")
-
-            try:
-                dm = await channel.guild.fetch_member(campaign.dm)
-                await dm.send(f"{dm.mention}: This is a notification that {member.mention} has been removed from the "
-                              f"campaign {campaign.name}. Please contact the President or the Campaign Master if you "
-                              f"think this was a mistake.")
-            except (discord.Forbidden, discord.HTTPException):
-                await channel.send("Unable to send removal message to DM.")
+            await self.bot.try_send_message(member, channel, Confirmation.CONFIRM_PLAYER_CAMPAIGN_REMOVE.format(member=member, campaign=campaign))
+            dm = await channel.guild.fetch_member(campaign.dm)
+            await self.bot.try_send_message(dm, channel, Confirmation.CONFIRM_DM_CAMPAIGN_REMOVE.format(dm=dm, member=member, campaign=campaign))
 
             self.bot.connection.commit()
             if campaign.current_players - 1 < campaign.max_players:
@@ -150,7 +136,7 @@ class CampaignPlayerManager(commands.Cog):
                     waitlisted_players.sort(key=lambda x: x["pid"])
                     await unwaitlist_apply(channel.guild.get_member(waitlisted_players[0]["id"]))
         else:
-            await channel.send("An unknown error occurred.")
+            await channel.send(Error.ERROR_UNK)
 
     @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
     @commands.command()
@@ -225,7 +211,7 @@ class CampaignPlayerManager(commands.Cog):
                 self.bot.connection.commit()
                 await context.send("Campaign players updated.")
             else:
-                await context.send("An unknown error occurred.")
+                await context.send(Error.ERROR_UNK)
 
     @commands.command()
     async def show_waitlisted_players(self, context: commands.Context, campaign_id: Union[int, str]):
@@ -258,7 +244,7 @@ class CampaignPlayerManager(commands.Cog):
             self.bot.connection.commit()
             await channel.send(f"Set max players for {campaign.name} to {count}.")
         else:
-            await channel.send("An unknown error occurred.")
+            await channel.send(Error.ERROR_UNK)
 
     @commands.has_any_role(1050188024287338567)  # dev
     @commands.command()
@@ -277,7 +263,7 @@ class CampaignPlayerManager(commands.Cog):
                 await context.send(f"Cleared waitlist for {campaign.name}")
                 self.bot.connection.commit()
             else:
-                await context.send("An unknown error occurred.")
+                await context.send(Error.ERROR_UNK)
 
     @commands.command()
     async def handle_waitlist(self, context: commands.Context, campaign: Union[int, str]):
@@ -322,19 +308,18 @@ class CampaignPlayerManager(commands.Cog):
                 self.bot.db.execute(f"UPDATE campaigns SET current_players = ? WHERE id = ?", (len(players), campaign.id))
             except Exception:
                 traceback.print_exc()
-                await context.send("An unknown error occurred.")
+                await context.send(Error.ERROR_UNK)
                 return
             self.bot.connection.commit()
             await context.send(f"Campaign {campaign.name} updated to {len(players)} players.")
 
     @commands.command()
     async def sync_player_count(self, context: commands.Context):
-        async with self.bot.mutex:
-            await context.send("Syncing player counts...")
-            for i in self.bot.CampaignSQLHelper.get_campaigns():
-                await self.update_player_count(context, i['id'])
-                await asyncio.sleep(.5)
-            await context.send("Sync complete.")
+        await context.send("Syncing player counts...")
+        for i in self.bot.CampaignSQLHelper.get_campaigns():
+            await self.update_player_count(context, i['id'])
+            await asyncio.sleep(.5)
+        await context.send("Sync complete.")
 
     @commands.command()
     async def remove_waitlisted_player(self, context: commands.Context, member: discord.Member,
@@ -346,7 +331,7 @@ class CampaignPlayerManager(commands.Cog):
                 await context.send(f"Removed {member.display_name} from the waitlist for {campaign.name}.")
                 self.bot.connection.commit()
             else:
-                await context.send("An unknown error occurred.")
+                await context.send(Error.ERROR_UNK)
 
     @commands.command()
     async def force_add_player(self, context: commands.Context, member: discord.Member, campaign: Union[int, str]):

@@ -109,6 +109,13 @@ class Listeners(commands.Cog):
         await context.send("Removed!")
 
     @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        # this just force-caches the member
+        if member.guild.get_member(member.id) is None:
+            await self.bot.guild.fetch_member(member.id)
+
+
+    @commands.Cog.listener()
     async def on_message(self, message):
         if message.author.bot:
             return

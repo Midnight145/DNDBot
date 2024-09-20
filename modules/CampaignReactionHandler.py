@@ -8,7 +8,7 @@ import discord
 from discord.ext import commands
 
 from . import CampaignInfo
-from .CampaignBuilder import verification_denied
+from .Strings import Confirmation, Error
 from .api.CampaignActionHandler import ActionHandler
 
 if TYPE_CHECKING:  # TYPE_CHECKING is always false, allows for type hinting without circular import
@@ -170,7 +170,7 @@ class CampaignReactionHandler(commands.Cog):
                     await channel.send(f"Campaign {campaign_info.name} has been created!")
                     if website:
                         info = self.bot.CampaignSQLHelper.select_campaign(campaign_info.name)
-                        await self.bot.campaign_creation_callback(campaign_info=info)
+                        await self.bot.campaign_creation_callback(campaign=info)
                         return
                 else:
                     await channel.send("An unknown error occurred while creating the campaign.")
@@ -201,17 +201,14 @@ class CampaignReactionHandler(commands.Cog):
 
         embed = discord.Embed(
             title="Verification Denied",
-            description=verification_denied(self.bot.config['verification_channel']),
+            description=Confirmation.CONFIRM_PLAYER_VERIFICATION_DENIED.format(channel=member.guild.get_channel(self.bot.config['verification_channel'])),
             color=discord.Color.dark_red(),
             timestamp=datetime.datetime.utcnow()
         )
         try:
             await member.send(embed=embed)
         except discord.Forbidden:
-            await self.bot.get_channel(self.bot.config["verification_channel"]).send(
-                f"{member.mention}: I was unable to DM you. Please open your DMs to this server, as I will send "
-                f"campaign updates via DM in the future. Once you have done that, you will need to re-react to the "
-                f"verification reaction.")
+            await self.bot.get_channel(self.bot.config["verification_channel"]).send(Error.ERROR_VERIFICATION_CLOSED_DMS.format(member=member))
         return False
 
     async def approve_player(self, message: discord.Message, member: discord.Member, reactor: discord.Member):
@@ -244,7 +241,7 @@ class CampaignReactionHandler(commands.Cog):
                     await channel.send(f"{member.mention} has been added to the campaign {campaign_name}!")
                     await message.delete()
                 else:
-                    await message.channel.send("An unknown error occurred.")
+                    await message.channel.send(Error.ERROR_UNK)
                     return
 
     async def deny_player(self, message: discord.Message, member: discord.Member, reactor: discord.Member) -> None:
@@ -263,15 +260,11 @@ class CampaignReactionHandler(commands.Cog):
 
             if reactor.id != dm.id:
                 return
-
-            campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
-            try:
-                await member.send(f"You have been denied from {campaign_name}. This is an automated message. If you believe "
-                                  f"this to be a mistake, please contact the Campaign Master.")
-            except discord.errors.Forbidden:
-                await channel.send(f"{member.mention} has their DMs closed, unable to notify them.")
+            await self.bot.try_send_message(member, channel,
+                                            Confirmation.CONFIRM_PLAYER_CAMPAIGN_DENIED.format(member=member,
+                                                                                               campaign=campaign))
             await message.delete()
-            await channel.send(f"{member.mention} application for the campaign {campaign.name} has been denied by the DM.")
+            await channel.send(Confirmation.CONFIRM_DM_CAMPAIGN_DENIED.format(member=member, campaign=campaign))
 
     @staticmethod
     async def __create_waitlist_embed(member: discord.Member, campaign: CampaignInfo) -> discord.Embed:
@@ -359,7 +352,7 @@ class CampaignReactionHandler(commands.Cog):
             await channel.send(f"{member.mention} has been added to the campaign {campaign.name}'s waitlist")
             await message.delete()
         else:
-            await message.channel.send("An unknown error occurred.")
+            await message.channel.send(Error.ERROR_UNK)
             return
 
     async def deny_waitlisted_player(self, message: discord.Message, member: discord.Member, reactor: discord.Member):
@@ -379,20 +372,16 @@ class CampaignReactionHandler(commands.Cog):
             return
 
         campaign = self.bot.CampaignSQLHelper.select_campaign(campaign_name)
-        try:
-            await member.send(f"You have been denied from {campaign_name}, which you were on the waitlist for. This "
-                              f"is an automated message. If you believe this to be a mistake, please contact the "
-                              f"Campaign Master.")
-            if self.bot.CampaignSQLHelper.remove_player(campaign, member):
-                self.bot.connection.commit()
-                await message.delete()
-                await channel.send(f"{member.mention} waitlisted application for the campaign {campaign.name} has "
-                                   f"been denied by the DM.")
-            else:
-                await channel.send(f"An unknown error occurred while removing the {member.mention} "
-                                   f"from the waitlist for {campaign.name}.")
-        except discord.errors.Forbidden:
-            pass
+        await self.bot.try_send_message(member, channel, Confirmation.CONFIRM_PLAYER_WAITLIST_DENY.format(member=member,
+                                                                                                          campaign=campaign))
+        if self.bot.CampaignSQLHelper.remove_player(campaign, member):
+            self.bot.connection.commit()
+            await message.delete()
+            await channel.send(Confirmation.CONFIRM_DM_WAITLIST_DENY.format(member=member, campaign=campaign))
+        else:
+            await channel.send(f"An unknown error occurred while removing the {member.mention} "
+                               f"from the waitlist for {campaign.name}.")
+
 
     async def handle_campaign_action(self, message: discord.Message, payload: discord.RawReactionActionEvent) -> typing.Optional[bool]:
         """

@@ -63,6 +63,11 @@ DNDBot.instance = bot
 
 
 @bot.event
+async def on_connect():
+    print("Connected to Discord")
+
+
+@bot.event
 async def on_ready():
     print("Logged in")
     for i in bot.all_cogs:

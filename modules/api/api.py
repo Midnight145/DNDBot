@@ -389,16 +389,17 @@ async def get_user_warnings(user_id: int, auth: str, response: Response):
 
 
 # async def campaign_creation_callback(instance: DNDBot, campaign_info: CampaignInfo):
-async def campaign_creation_callback(*args, campaign_info: CampaignInfo = None):
+async def campaign_creation_callback(*args, campaign: CampaignInfo = None):
     init_guild()
-    name = campaign_info.name
-    dungeon_master = await guild.fetch_member(campaign_info.dm)
+    oneshot = campaign.meeting_date is not None
+    name = campaign.name
+    dungeon_master = await guild.fetch_member(campaign.dm)
 
     DNDBot.instance.connection.commit()
     await (guild.get_channel(DNDBot.instance.config["notification_channel"])).send(
         f"<@&{DNDBot.instance.config['new_campaign_role']}>: A new campaign has opened: "
-        f"{campaign_info.name}, run by <@{campaign_info.dm}>! "
-        f"Apply to join here: <https://www.untcriticalhit.org/campaigns#{campaign_info.id}>")
+        f"\"{campaign.name}\"! This {'one-shot' if oneshot else campaign} will run using {campaign.system} by <@{campaign.dm}> on {campaign.meeting_date if oneshot else campaign.meeting_day}, for {campaign.session_length} starting at {campaign.meeting_time}! "
+        f"Apply to join here: <https://www.untcriticalhit.org/campaigns#{campaign.id}>")
 
     embed = discord.Embed(
         title="Campaign Created",
@@ -407,8 +408,8 @@ async def campaign_creation_callback(*args, campaign_info: CampaignInfo = None):
     )
     receipts = guild.get_channel(DNDBot.instance.config["dm_receipts"])
     embed.add_field(name="DM", value=f"{str(dungeon_master)} ({dungeon_master.id})")
-    embed.add_field(name="Role", value=str(guild.get_role(campaign_info.role)))
+    embed.add_field(name="Role", value=str(guild.get_role(campaign.role)))
     embed.add_field(name="Category", value=str(
-        (await guild.fetch_channel(campaign_info.category)).name))
-    embed.add_field(name="Max Players", value=f"{campaign_info.max_players}")
+        (await guild.fetch_channel(campaign.category)).name))
+    embed.add_field(name="Max Players", value=f"{campaign.max_players}")
     await receipts.send(embed=embed)

@@ -36,7 +36,7 @@ class Text(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
-        if message.guild.id != 809567701407629363 or message.author.bot:
+        if message.guild is None or message.guild.id != 809567701407629363 or message.author.bot:
             return
 
         embed = discord.Embed(

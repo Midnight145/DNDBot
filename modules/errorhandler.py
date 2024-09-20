@@ -5,7 +5,7 @@ from discord.ext import commands
 import traceback
 import io
 import discord
-from discord.ext.buttons import Paginator
+# from discord.ext.buttons import Paginator
 
 
 class TracebackHandler:
@@ -37,6 +37,14 @@ class ErrorHandler(commands.Cog):
     @commands.command(aliases=["show_error"])
     async def get_error(self, context: commands.Context, errcode: str):
         try:
+            message = str(self.bot.traceback[int(errcode)])
+            if len(message) > 2000 - 10:
+                lines = message.split()
+                message1 = lines[0:len(lines) // 2]
+                message2 = lines[len(lines)//2::]
+                await context.send(f"```\n{message1}\n```")
+                await context.send(f"```\n{message2}\n```")
+                return
             await context.send("```\n" + str(self.bot.traceback[int(errcode)]) + "\n```")
         except KeyError:
             await context.send("Error code does not exist, returning.")
@@ -83,7 +91,7 @@ class ErrorHandler(commands.Cog):
         for item in items:
             pages.append(f"**Error Code {item.id}:**\n{str(item)}")
 
-        await Paginator(title="Tracebacks", color=0xce2029, entries=pages, length=1).start(context)
+        # await Paginator(title="Tracebacks", color=0xce2029, entries=pages, length=1).start(context)
 
     @commands.command()
     async def throw(self, context: commands.Context):

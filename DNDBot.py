@@ -5,9 +5,10 @@ import sqlite3
 import traceback
 import zipfile
 
+import discord.abc
 from discord.ext import commands, tasks
 
-from modules import CampaignBuilder, CampaignSQLHelper, CampaignPlayerManager, CampaignManager
+from modules import CampaignBuilder, CampaignSQLHelper, CampaignPlayerManager, CampaignManager, Strings
 
 
 class DNDBot(commands.Bot):
@@ -60,3 +61,11 @@ class DNDBot(commands.Bot):
             self.connection.row_factory = dict_factory
             self.db = self.connection.cursor()
             self.mutex.release()
+
+    async def try_send_message(self, member: discord.Member, channel: discord.abc.Messageable, message):
+        try:
+            await member.send(message)
+        except discord.Forbidden:
+            await channel.send(Strings.Error.ERROR_CLOSED_DMS.format(member=member))
+        except Exception:
+            await channel.send(Strings.Error.ERROR_UNKNOWN_DMS.format(member=member))
