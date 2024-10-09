@@ -391,14 +391,14 @@ async def get_user_warnings(user_id: int, auth: str, response: Response):
 # async def campaign_creation_callback(instance: DNDBot, campaign_info: CampaignInfo):
 async def campaign_creation_callback(*args, campaign: CampaignInfo = None):
     init_guild()
-    oneshot = campaign.meeting_date is not None
+    oneshot = campaign.meeting_date is not ""
     name = campaign.name
     dungeon_master = await guild.fetch_member(campaign.dm)
 
     DNDBot.instance.connection.commit()
     await (guild.get_channel(DNDBot.instance.config["notification_channel"])).send(
         f"<@&{DNDBot.instance.config['new_campaign_role']}>: A new campaign has opened: "
-        f"\"{campaign.name}\"! This {'one-shot' if oneshot else campaign} will run using {campaign.system} by <@{campaign.dm}> on {campaign.meeting_date if oneshot else campaign.meeting_day}, for {campaign.session_length} starting at {campaign.meeting_time}! "
+            f"\"{campaign.name}\"! This {'one-shot' if oneshot else 'campaign'} will run using {campaign.system} by <@{campaign.dm}> on {campaign.meeting_date if oneshot else campaign.meeting_day}, for {campaign.session_length} starting at {campaign.meeting_time}! "
         f"Apply to join here: <https://www.untcriticalhit.org/campaigns#{campaign.id}>")
 
     embed = discord.Embed(
