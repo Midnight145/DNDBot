@@ -170,7 +170,7 @@ class CampaignManager(commands.Cog):
             if commit:
                 await context.send(f"Campaign \"{resp.name}\" renamed to \"{name}\".")
                 self.bot.connection.commit()
-                category: discord.CategoryChannel = await context.guild.get_channel(resp.category)
+                category: discord.CategoryChannel = context.guild.get_channel(resp.category)
                 await category.edit(name=name)
 
             else:
@@ -313,8 +313,12 @@ class CampaignManager(commands.Cog):
     @commands.command()
     @commands.has_any_role(1050188024287338567, 873734392458145912, 809567701735440469)  # dev, admin, officer
     async def update_campaign(self, context: commands.Context, campaign: int = None, *, kwargs = None):
-        if campaign == None:
-            message = """Valid Fields:
+        if campaign == None or kwargs == None or "=" not in kwargs:
+            message = """Usage: `>update_campaign <campaign_id> <field1=value> <field2=value> ...`
+Example: `>update_campaign 1 name="New Campaign Name" min_players=3 max_players=6`
+
+Valid Fields:
+```
 name: str
 min_players: int
 max_players: int
@@ -328,6 +332,7 @@ meeting_time: HH:MM (24hr)
 meeting_date: YYYY-MM-DD
 system: str
 new_player_friendly: [Yes, No]
+```
 """
             await context.send(message)
             return
