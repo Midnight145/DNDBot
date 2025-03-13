@@ -123,7 +123,7 @@ class CampaignReactionHandler(commands.Cog):
                     dm = channel.guild.get_member(int(embed.fields[FieldValuesWebsite.discord_id].value))
                     print(dm)
                     campaign_info = await self.bot.CampaignBuilder.create_campaign(
-                        channel.guild, embed.fields[FieldValuesWebsite.campaign_name].value, dm)
+                        channel.guild, embed.fields[FieldValuesWebsite.campaign_name].value, embed.fields[FieldValuesWebsite.location].value, dm)
 
                     campaign_info.min_players = int(embed.fields[FieldValuesWebsite.min_players].value)
                     campaign_info.max_players = int(embed.fields[FieldValuesWebsite.max_players].value)
@@ -144,7 +144,7 @@ class CampaignReactionHandler(commands.Cog):
                 else:
                     dm = channel.guild.get_member_named(embed.fields[FieldValues.discord_username].value)
                     campaign_info = await self.bot.CampaignBuilder.create_campaign(
-                        channel.guild, embed.fields[FieldValues.campaign_name].value, dm)
+                        channel.guild, embed.fields[FieldValues.campaign_name].value, embed.fields[FieldValuesWebsite.location].value, dm)
 
                     campaign_info.min_players = int(embed.fields[FieldValues.min_players].value)
                     campaign_info.max_players = int(embed.fields[FieldValues.max_players].value)

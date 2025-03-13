@@ -21,7 +21,7 @@ class CampaignBuilder(commands.Cog):
         self.bot = bot
 
     # noinspection PyMethodMayBeStatic
-    async def create_campaign(self, guild: discord.Guild, name: str, dm: discord.Member) -> CampaignInfo:
+    async def create_campaign(self, guild: discord.Guild, name: str, location: str, dm: discord.Member) -> CampaignInfo:
         """
         Creates all the necessary channels when creating a new campaign
         :param guild: Guild to create campaign in
@@ -68,20 +68,12 @@ class CampaignBuilder(commands.Cog):
         # Create campaign-specific information channel
         info = await category.create_text_channel(name="information")
         await info.send(New.NEW_CAMPAIGN_INFO_MESSAGE)
-
         # Create campaign lobby channel
         await category.create_text_channel(name="lobby")
 
-        # Create campaign notes channel
-        notes = await category.create_text_channel(name="notes")
-        await notes.send(New.NEW_CAMPAIGN_NOTES_MESSAGE)
-
-        # Create campaign picture channel
-        pics = await category.create_text_channel(name="pics")
-        await pics.send(New.NEW_CAMPAIGN_PICS_MESSAGE)
-
-        # Create campaign voice channel
-        await category.create_voice_channel(name=name)
+        if location.lower() in ["online", "virtually", "discord", "virtual", "hybrid"]:
+            # Create campaign voice channel
+            await category.create_voice_channel(name=name)
 
         retval.status_message = 0
         return retval
