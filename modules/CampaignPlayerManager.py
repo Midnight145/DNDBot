@@ -314,10 +314,15 @@ class CampaignPlayerManager(commands.Cog):
             await context.send(f"Campaign {campaign.name} updated to {len(players)} players.")
 
     @commands.command()
-    async def sync_player_count(self, context: commands.Context):
+    async def sync_player_count(self, context: commands.Context, campaign_id: Union[int, str] = None):
+        to_sync = []
+        if campaign_id is None:
+            to_sync = [i["id"] for i in self.bot.CampaignSQLHelper.get_campaigns()]
+        else:
+            to_sync = [self.bot.CampaignSQLHelper.select_campaign(campaign_id).id]
         await context.send("Syncing player counts...")
-        for i in self.bot.CampaignSQLHelper.get_campaigns():
-            await self.update_player_count(context, i['id'])
+        for i in to_sync:
+            await self.update_player_count(context, i)
             await asyncio.sleep(.5)
         await context.send("Sync complete.")
 

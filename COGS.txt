@@ -8,6 +8,5 @@ modules.CampaignBuilder
 modules.warnings
 modules.remind
 logs.member
-logs.text
 jishaku
 modules.scheduler

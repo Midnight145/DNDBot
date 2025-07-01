@@ -251,7 +251,7 @@ async def create_campaign(auth: str, campaign: PartialCampaignInfo, response: Re
     channel = DNDBot.instance.get_channel(DNDBot.instance.config["dm_receipts"])
     DNDBot.instance.db.execute("UPDATE users SET playstyle = ? WHERE id = ?",
                                (campaign.playstyle, campaign.dm.discord_id))
-    DNDBot.instance.db.commit()
+    DNDBot.instance.connection.commit()
     message = await channel.send(embed=embed)
     if not message:
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR

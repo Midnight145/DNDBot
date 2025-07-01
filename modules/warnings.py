@@ -29,7 +29,7 @@ class Warnings(commands.Cog):
             await context.send(f"Error in sending message to {member.mention}: Forbidden")
         await context.message.delete()
 
-    @commands.command(aliases=["warnings"])
+    @commands.command(aliases=["warnings", "list_warnings"])
     async def warns(self, context: commands.Context, member: discord.Member = None):
         if member is None:
             member = context.author
@@ -50,29 +50,29 @@ class Warnings(commands.Cog):
 
         await context.send(embed=embed)
 
-    @commands.has_role("Officer")
-    @commands.command()
-    async def list_warnings(self, context: commands.Context):
-        resp = self.bot.db.execute("SELECT * FROM warns").fetchall()
-        warned_members = [i["member"] for i in resp]
-        for member_id in warned_members:
-            member = context.guild.get_member(member_id)
-            if member is None:
-                mention = member_id
-            else:
-                mention = member.mention
-            counter = 0
-            embed = discord.Embed(
-                title="Warnings",
-                description=f"Warnings for member {mention}",
-                color=discord.Color.dark_red(),
-                timestamp=datetime.datetime.utcnow()
-            )
-            for warn in resp:
-                if warn["member"] == member_id:
-                    embed.add_field(name=f"Warning {counter}", value=warn["reason"], inline=False)
-                    counter += 1
-            await context.send(embed=embed)
+    # @commands.has_role("Officer")
+    # @commands.command()
+    # async def list_warnings(self, context: commands.Context, member: discord.Member = None):
+    #     resp = self.bot.db.execute("SELECT * FROM warns").fetchall()
+    #     warned_members = [i["member"] for i in resp]
+    #     for member_id in warned_members:
+    #         member = context.guild.get_member(member_id)
+    #         if member is None:
+    #             mention = member_id
+    #         else:
+    #             mention = member.mention
+    #         counter = 0
+    #         embed = discord.Embed(
+    #             title="Warnings",
+    #             description=f"Warnings for member {mention}",
+    #             color=discord.Color.dark_red(),
+    #             timestamp=datetime.datetime.utcnow()
+    #         )
+    #         for warn in resp:
+    #             if warn["member"] == member_id:
+    #                 embed.add_field(name=f"Warning {counter}", value=warn["reason"], inline=False)
+    #                 counter += 1
+    #         await context.send(embed=embed)
 
     @commands.has_role("Officer")
     @commands.command()
